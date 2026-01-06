@@ -1,0 +1,192 @@
+#cloud-config
+
+# Azure DevOps Agent Cloud-Init Configuration
+# This script sets up a self-hosted Azure Pipelines agent with Docker-in-Docker support
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - curl
+  - jq
+  - wget
+  - git
+  - unzip
+
+write_files:
+  # Azure DevOps Agent start script
+  - path: /usr/local/bin/start_azdevops_agent.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      echo "Starting Azure DevOps Agent..."
+      
+      # Environment variables (passed from Terraform)
+      AZP_URL="${azp_url}"
+      AZP_TOKEN="${azp_token}"
+      AZP_POOL="${azp_pool}"
+      AZP_AGENT_NAME="${azp_agent_name}-$(hostname)"
+      
+      # Validate required variables
+      if [ -z "$AZP_URL" ] || [ -z "$AZP_TOKEN" ] || [ -z "$AZP_POOL" ]; then
+        echo "ERROR: Missing required environment variables"
+        echo "AZP_URL=$AZP_URL"
+        echo "AZP_TOKEN=***"
+        echo "AZP_POOL=$AZP_POOL"
+        exit 1
+      fi
+      
+      # Start agent container
+      docker run -d \
+        --name azdevops-agent-$(hostname)-$RANDOM \
+        --restart unless-stopped \
+        -e AZP_URL="$AZP_URL" \
+        -e AZP_TOKEN="$AZP_TOKEN" \
+        -e AZP_POOL="$AZP_POOL" \
+        -e AZP_AGENT_NAME="$AZP_AGENT_NAME" \
+        -e AZP_WORK="/azp/_work" \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v /azp/_work:/azp/_work \
+        --privileged \
+        fok666/azuredevops:latest
+      
+      echo "Azure DevOps Agent started successfully"
+
+  # Agent stop script (for graceful shutdown)
+  - path: /usr/local/bin/stop_azdevops_agent.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      echo "Stopping Azure DevOps Agent gracefully..."
+      
+      # Get all agent containers
+      CONTAINERS=$(docker ps --filter "name=azdevops-agent" --format "{{.ID}}")
+      
+      if [ -z "$CONTAINERS" ]; then
+        echo "No agent containers running"
+        exit 0
+      fi
+      
+      # Stop each container gracefully
+      for CONTAINER in $CONTAINERS; do
+        echo "Stopping container: $CONTAINER"
+        docker stop -t 60 "$CONTAINER" || true
+        docker rm "$CONTAINER" || true
+      done
+      
+      echo "All agents stopped"
+
+  # VMSS Scheduled Events monitor (spot termination detection)
+  - path: /usr/local/bin/vmss_monitor.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      # Monitor Azure VMSS Scheduled Events for spot instance termination
+      
+      METADATA_ENDPOINT="http://169.254.169.254/metadata/scheduledevents?api-version=2020-07-01"
+      LOG_FILE="/var/log/vmss_monitor.log"
+      
+      while true; do
+        # Query scheduled events
+        EVENTS=$(curl -s -H "Metadata:true" "$METADATA_ENDPOINT" 2>/dev/null)
+        
+        if [ $? -eq 0 ] && [ ! -z "$EVENTS" ]; then
+          # Check for Preempt or Terminate events
+          EVENT_COUNT=$(echo "$EVENTS" | jq -r '.Events | length' 2>/dev/null || echo "0")
+          
+          if [ "$EVENT_COUNT" -gt 0 ]; then
+            echo "[$(date)] Scheduled event detected!" | tee -a "$LOG_FILE"
+            echo "$EVENTS" | jq '.' | tee -a "$LOG_FILE"
+            
+            # Stop agents gracefully
+            /usr/local/bin/stop_azdevops_agent.sh 2>&1 | tee -a "$LOG_FILE"
+            
+            # Acknowledge the event
+            EVENT_ID=$(echo "$EVENTS" | jq -r '.Events[0].EventId')
+            if [ ! -z "$EVENT_ID" ]; then
+              curl -X POST -H "Metadata:true" \
+                -d "{\"StartRequests\": [{\"EventId\": \"$EVENT_ID\"}]}" \
+                "$METADATA_ENDPOINT" 2>&1 | tee -a "$LOG_FILE"
+            fi
+            
+            echo "[$(date)] Graceful shutdown complete" | tee -a "$LOG_FILE"
+            break
+          fi
+        fi
+        
+        # Check every 15 seconds
+        sleep 15
+      done
+
+  # Systemd service for agent
+  - path: /etc/systemd/system/azdevops-agent.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Azure DevOps Agent
+      After=docker.service
+      Requires=docker.service
+      
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/local/bin/start_azdevops_agent.sh
+      ExecStop=/usr/local/bin/stop_azdevops_agent.sh
+      
+      [Install]
+      WantedBy=multi-user.target
+
+  # Systemd service for VMSS monitor
+  - path: /etc/systemd/system/vmss-monitor.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Azure VMSS Scheduled Events Monitor
+      After=network.target
+      
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/bin/vmss_monitor.sh
+      Restart=always
+      RestartSec=10
+      
+      [Install]
+      WantedBy=multi-user.target
+
+  # Cron job for periodic monitoring (backup)
+  - path: /etc/cron.d/vmss-monitor
+    permissions: '0644'
+    content: |
+      */1 * * * * root /usr/local/bin/vmss_monitor.sh >> /var/log/vmss_monitor.log 2>&1
+
+runcmd:
+  # Add user to docker group
+  - usermod -aG docker azureuser
+  
+  # Create work directory
+  - mkdir -p /azp/_work
+  - chown -R azureuser:azureuser /azp
+  
+  # Enable and start services
+  - systemctl daemon-reload
+  - systemctl enable docker
+  - systemctl start docker
+  
+  # Wait for Docker to be ready
+  - timeout 60 bash -c 'until docker info; do sleep 2; done'
+  
+  # Start Azure DevOps agent
+  - systemctl enable azdevops-agent.service
+  - systemctl start azdevops-agent.service
+  
+  # Start VMSS monitor
+  - systemctl enable vmss-monitor.service
+  - systemctl start vmss-monitor.service
+  
+  # Log initialization complete
+  - echo "Azure DevOps Agent initialization complete at $(date)" > /var/log/agent-init-complete.log
+
+final_message: "Azure DevOps Agent is ready!"

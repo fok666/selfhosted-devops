@@ -1,0 +1,107 @@
+# Azure DevOps Agent Configuration Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# Project Configuration
+project_name = "my-azdevops-agent"
+aws_region   = "us-east-1"  # or "us-west-2", "eu-west-1", etc.
+
+# Azure DevOps Configuration
+azp_url   = "https://dev.azure.com/your-organization"  # Your Azure DevOps organization URL
+azp_token = "your-personal-access-token-here"          # PAT with Agent Pools (read, manage) scope
+azp_pool  = "Default"                                   # Agent pool name
+
+# Optional: Custom agent name prefix
+azp_agent_name_prefix = "aws-agent"
+
+# Networking (Optional - defaults provided)
+# vpc_cidr = "10.0.0.0/16"
+
+# EC2 Configuration
+instance_types     = ["t3.medium", "t3a.medium", "t2.medium"]  # Diversify for spot availability
+use_spot_instances = true  # Use Spot instances for ~70% cost savings
+spot_max_price     = ""    # Empty = pay up to on-demand price
+spot_instance_pools = 3    # Number of instance types to use
+
+# Autoscaling Configuration
+enable_autoscaling      = true
+min_instances           = 0   # Scale to zero when idle
+max_instances           = 10  # Maximum number of agents
+default_instances       = 1   # Starting number of agents
+target_cpu_utilization  = 70  # Target CPU% for autoscaling
+
+# Tags (Optional)
+tags = {
+  Environment = "production"
+  Team        = "devops"
+  CostCenter  = "engineering"
+  ManagedBy   = "terraform"
+}
+
+# ============================================
+# COST ESTIMATES (with Spot instances)
+# ============================================
+# Region: us-east-1
+# Instance Type: t3.medium
+#
+# Spot Instance (~70% discount):
+# - 1 instance (always-on): ~$8-10/month
+# - Scale 0-5 (10% utilization): ~$3-5/month
+# - Scale 0-10 (30% utilization): ~$20-30/month
+#
+# On-Demand (for comparison):
+# - 1 instance (always-on): ~$30/month
+# ============================================
+
+# ============================================
+# HOW TO GET AZURE DEVOPS PAT
+# ============================================
+# 1. Go to https://dev.azure.com/your-organization
+# 2. Click on User Settings (top right) → Personal Access Tokens
+# 3. Click "New Token"
+# 4. Name: "Terraform Agent Token"
+# 5. Organization: Select your organization
+# 6. Scopes: Select "Agent Pools (Read & manage)"
+# 7. Click "Create"
+# 8. Copy the token immediately (you won't see it again)
+# ============================================
+
+# ============================================
+# DEPLOYMENT INSTRUCTIONS
+# ============================================
+# 1. Copy this file: cp terraform.tfvars.example terraform.tfvars
+# 2. Edit terraform.tfvars with your values
+# 3. Initialize: terraform init
+# 4. Plan: terraform plan
+# 5. Apply: terraform apply
+# 6. Check agents: https://dev.azure.com/your-org/_settings/agentpools
+# ============================================
+
+# ============================================
+# INSTANCE TYPE OPTIONS
+# ============================================
+# Budget:
+# - t3.small   (2 vCPU, 2 GB)  - Minimum recommended
+# - t3.medium  (2 vCPU, 4 GB)  - Good balance
+#
+# Balanced:
+# - t3.large   (2 vCPU, 8 GB)  - Recommended for most workloads
+# - t3.xlarge  (4 vCPU, 16 GB) - Heavy workloads
+#
+# Compute Optimized:
+# - c5.large   (2 vCPU, 4 GB)  - Compute intensive
+# - c5.xlarge  (4 vCPU, 8 GB)  - Maximum compute
+#
+# Memory Optimized:
+# - r5.large   (2 vCPU, 16 GB) - Memory intensive
+# - r5.xlarge  (4 vCPU, 32 GB) - Large memory workloads
+# ============================================
+
+# ============================================
+# SPOT INSTANCE BEST PRACTICES
+# ============================================
+# 1. Use multiple instance types for better availability
+# 2. Set spot_instance_pools to 2-3 for diversification
+# 3. Leave spot_max_price empty to pay on-demand price
+# 4. Monitor interruption rate in CloudWatch
+# 5. Scale to zero when not in use
+# ============================================

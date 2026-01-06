@@ -1,0 +1,134 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - curl
+  - jq
+
+write_files:
+  - path: /opt/stop.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      echo "Stopping GitHub runners..."
+      RUNNER_CONTAINERS=$(docker ps --filter "name=github-runner-" --format "{{.Names}}" | sort)
+      if [ -z "$RUNNER_CONTAINERS" ]; then
+        echo "No running GitHub runner containers found."
+        exit 0
+      fi
+      for CONTAINER_NAME in $RUNNER_CONTAINERS; do
+        echo "Stopping $CONTAINER_NAME..."
+        docker stop -t 30 "$CONTAINER_NAME" > /dev/null 2>&1 || true
+        docker rm "$CONTAINER_NAME" > /dev/null 2>&1 || true
+        echo "  $CONTAINER_NAME stopped and removed"
+      done
+      echo "All GitHub runners stopped successfully!"
+
+  - path: /opt/vmss_monitor.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      METADATA_ENDPOINT='http://169.254.169.254/metadata/scheduledevents?api-version=2020-07-01'
+      EVENTS_FILE='/tmp/scheduledevents.json'
+      STOP_SCRIPT='/opt/stop.sh'
+      echo "Checking for VMSS scheduled events..."
+      curl -s "$METADATA_ENDPOINT" -H 'Metadata: true' > "$EVENTS_FILE"
+      if grep -q "Terminate" "$EVENTS_FILE"; then
+        echo "Terminate event detected! Initiating graceful shutdown..."
+        if [ -x "$STOP_SCRIPT" ]; then
+          echo "Executing stop script: $STOP_SCRIPT"
+          "$STOP_SCRIPT"
+        else
+          echo "Warning: Stop script not found or not executable: $STOP_SCRIPT"
+        fi
+        EventId=$(jq -r '.Events[] | select(.EventType == "Terminate") | .EventId' "$EVENTS_FILE")
+        if [ -n "$EventId" ]; then
+          echo "Acknowledging event: $EventId"
+          curl -s -X POST "$METADATA_ENDPOINT" \
+            -H 'Metadata: true' \
+            -d "{\"StartRequests\": [{\"EventId\": \"$${EventId}\"}]}"
+          echo "Event acknowledged successfully"
+        fi
+      else
+        echo "No termination events scheduled"
+      fi
+
+  - path: /opt/run-github-runners.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      GITHUB_URL="${github_url}"
+      GITHUB_TOKEN="${github_token}"
+      RUNNER_LABELS="${runner_labels}"
+      RUNNER_COUNT="${runner_count}"
+      DOCKER_IMAGE="${runner_docker_image}"
+      
+      # Auto-detect CPU count if runner_count is 0
+      if [ "$RUNNER_COUNT" = "0" ]; then
+        RUNNER_COUNT=$(nproc)
+      fi
+      
+      # Limit CPU per runner
+      CPU_COUNT=$(nproc)
+      MAX_CPU=$((CPU_COUNT > 1 ? 2 : 1))
+      
+      echo "Starting $RUNNER_COUNT GitHub runner(s)..."
+      
+      for R in $(seq 1 $RUNNER_COUNT); do
+        RUNNER_NAME="runner-$(hostname)-$R"
+        WORK_DIR="/mnt/runner$R/_work"
+        CONTAINER_NAME="github-runner-$R"
+        
+        mkdir -p "$WORK_DIR"
+        
+        echo "Starting runner $R/$RUNNER_COUNT: $RUNNER_NAME"
+        
+        if docker ps -a --format '{{.Names}}' | grep -q "^$${CONTAINER_NAME}$"; then
+          echo "  Removing existing container: $CONTAINER_NAME"
+          docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
+        fi
+        
+        docker run \
+          --privileged \
+          --tty \
+          --detach \
+          --cpus="$${MAX_CPU}" \
+          -e GITHUB_URL="$GITHUB_URL" \
+          -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+          -e RUNNER_NAME="$RUNNER_NAME" \
+          -e RUNNER_LABELS="$RUNNER_LABELS" \
+          -e RUNNER_WORK_DIRECTORY="/_work" \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "$WORK_DIR":/_work \
+          --restart unless-stopped \
+          --name "$CONTAINER_NAME" \
+          "$DOCKER_IMAGE"
+        
+        echo "  Container $CONTAINER_NAME started successfully"
+      done
+      
+      echo "All runners started successfully!"
+
+runcmd:
+  # Start and enable Docker
+  - systemctl start docker
+  - systemctl enable docker
+  
+  # Add ubuntu user to docker group
+  - usermod -aG docker ubuntu
+  
+  # Set up VMSS monitoring cron job
+  - (crontab -l 2>/dev/null; echo "* * * * * /opt/vmss_monitor.sh >> /var/log/vmss_monitor.log 2>&1") | crontab -
+  
+  # Start GitHub runners
+  - sleep 10
+  - /opt/run-github-runners.sh >> /var/log/github-runner-init.log 2>&1
+
+final_message: "GitHub Runner VM is ready!"

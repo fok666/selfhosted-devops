@@ -1,0 +1,98 @@
+# Azure DevOps Agent Configuration Example
+# Copy this file to terraform.tfvars and fill in your values
+
+# Project Configuration
+project_name = "my-azdevops-agent"
+location     = "East US"  # or "West Europe", "Southeast Asia", etc.
+
+# Azure DevOps Configuration
+azp_url   = "https://dev.azure.com/your-organization"  # Your Azure DevOps organization URL
+azp_token = "your-personal-access-token-here"          # PAT with Agent Pools (read, manage) scope
+azp_pool  = "Default"                                   # Agent pool name
+
+# Optional: Custom agent name prefix
+azp_agent_name_prefix = "azure-agent"
+
+# Networking (Optional - defaults provided)
+# vnet_address_space    = "10.0.0.0/16"
+# subnet_address_prefix = "10.0.1.0/24"
+
+# VM Configuration
+vm_sku             = "Standard_D2s_v3"  # 2 vCPU, 8 GB RAM
+use_spot_instances = true                # Use Spot instances for ~70-90% cost savings
+spot_max_price     = -1                  # -1 = pay up to on-demand price
+
+# Availability Zones
+zones = ["1", "2", "3"]
+
+# Autoscaling Configuration
+enable_autoscaling = true
+min_instances      = 0   # Scale to zero when idle
+max_instances      = 10  # Maximum number of agents
+default_instances  = 1   # Starting number of agents
+
+scale_out_cpu_threshold = 75  # Scale out when CPU > 75%
+scale_in_cpu_threshold  = 25  # Scale in when CPU < 25%
+
+# Tags (Optional)
+tags = {
+  Environment = "production"
+  Team        = "devops"
+  CostCenter  = "engineering"
+  ManagedBy   = "terraform"
+}
+
+# ============================================
+# COST ESTIMATES (with Spot instances)
+# ============================================
+# Region: East US
+# VM Size: Standard_D2s_v3
+#
+# Spot Instance (~90% discount):
+# - 1 instance (always-on): ~$5-8/month
+# - Scale 0-5 (10% utilization): ~$2-4/month
+# - Scale 0-10 (30% utilization): ~$15-25/month
+#
+# On-Demand (for comparison):
+# - 1 instance (always-on): ~$70/month
+# ============================================
+
+# ============================================
+# HOW TO GET AZURE DEVOPS PAT
+# ============================================
+# 1. Go to https://dev.azure.com/your-organization
+# 2. Click on User Settings (top right) → Personal Access Tokens
+# 3. Click "New Token"
+# 4. Name: "Terraform Agent Token"
+# 5. Organization: Select your organization
+# 6. Scopes: Select "Agent Pools (Read & manage)"
+# 7. Click "Create"
+# 8. Copy the token immediately (you won't see it again)
+# ============================================
+
+# ============================================
+# DEPLOYMENT INSTRUCTIONS
+# ============================================
+# 1. Copy this file: cp terraform.tfvars.example terraform.tfvars
+# 2. Edit terraform.tfvars with your values
+# 3. Initialize: terraform init
+# 4. Plan: terraform plan
+# 5. Apply: terraform apply
+# 6. Check agents: https://dev.azure.com/your-org/_settings/agentpools
+# ============================================
+
+# ============================================
+# VM SIZE OPTIONS
+# ============================================
+# Budget:
+# - Standard_B2s  (2 vCPU, 4 GB)  - Burstable, lowest cost
+# - Standard_D2s_v3 (2 vCPU, 8 GB)  - Recommended
+#
+# Balanced:
+# - Standard_D4s_v3 (4 vCPU, 16 GB) - Good for parallel jobs
+# - Standard_F4s_v2 (4 vCPU, 8 GB)  - Compute optimized
+#
+# Performance:
+# - Standard_D8s_v3 (8 vCPU, 32 GB)  - Heavy workloads
+# - Standard_F8s_v2 (8 vCPU, 16 GB)  - Maximum compute
+# ============================================

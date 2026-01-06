@@ -1,0 +1,35 @@
+# Example terraform.tfvars for GitLab Runner on Azure
+
+project_name = "my-gitlab-runner"
+location     = "East US"
+
+# GitLab Configuration
+gitlab_url   = "https://gitlab.com"
+gitlab_token = "glrt-your-registration-token-here" # Get from GitLab: Settings > CI/CD > Runners
+runner_tags  = "docker,linux,azure,spot"
+
+# VM Configuration
+vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8 GB RAM
+use_spot_instances = true
+spot_max_price     = -1 # Pay up to on-demand price
+
+# Scaling Configuration
+min_instances     = 0  # Scale to zero when idle
+max_instances     = 10
+default_instances = 1
+
+# Runner Configuration
+runner_count_per_vm = 0 # 0 = auto-detect based on vCPU count
+docker_image        = "fok666/gitlab-runner:latest"
+
+# Storage
+os_disk_size_gb = 100
+os_disk_type    = "StandardSSD_LRS"
+
+# Tags
+tags = {
+  Environment = "Production"
+  Application = "GitLab-Runner"
+  ManagedBy   = "Terraform"
+  Team        = "DevOps"
+}

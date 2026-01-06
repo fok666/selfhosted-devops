@@ -1,0 +1,40 @@
+# Example terraform.tfvars for GitHub Runner on AWS
+
+project_name = "my-github-runner"
+aws_region   = "us-east-1"
+
+# Network Configuration (optional - defaults to default VPC)
+# vpc_id     = "vpc-xxxxxxxxx"
+# subnet_ids = ["subnet-xxxxxxxxx", "subnet-yyyyyyyyy"]
+
+# GitHub Configuration
+github_url   = "https://github.com/your-org/your-repo" # or https://github.com/your-org for organization
+github_token = "your-registration-token-here"           # Get from GitHub: Settings > Actions > Runners > New self-hosted runner
+runner_labels = "self-hosted,linux,x64,aws,spot"
+
+# Instance Configuration
+instance_type       = "t3.medium" # 2 vCPU, 4 GB RAM
+use_spot_instances  = true
+spot_max_price      = "" # Empty for on-demand price
+spot_instance_types = ["t3.medium", "t3a.medium", "t2.medium"]
+
+# Scaling Configuration
+min_size         = 0  # Scale to zero when idle
+max_size         = 10
+desired_capacity = 1
+
+# Runner Configuration
+runner_count_per_instance = 0 # 0 = auto-detect based on vCPU count
+docker_image              = "fok666/github-runner:latest"
+
+# Storage
+root_volume_size = 100
+root_volume_type = "gp3"
+
+# Tags
+tags = {
+  Environment = "Production"
+  Application = "GitHub-Runner"
+  ManagedBy   = "Terraform"
+  Team        = "DevOps"
+}
