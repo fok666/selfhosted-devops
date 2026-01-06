@@ -13,5 +13,7 @@ updates:
       - "/azure/azure-devops-agent"
       - "/azure/github-runner"
       - "/azure/gitlab-runner"
+      - "/modules/aws-asg"
+      - "/modules/azure-vmss"
     schedule:
       interval: "weekly"
