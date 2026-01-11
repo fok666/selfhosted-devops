@@ -175,8 +175,7 @@ locals {
     azp_url        = var.azp_url
     azp_token      = var.azp_token
     azp_pool       = var.azp_pool
-    azp_agent_name = var.azp_agent_name_prefix
-  })
+    azp_agent_name = var.azp_agent_name_prefix    agent_count    = var.agent_count_per_instance  })
 }
 
 # Azure DevOps Agent ASG

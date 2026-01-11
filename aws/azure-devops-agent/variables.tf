@@ -35,6 +35,12 @@ variable "azp_agent_name_prefix" {
   default     = "aws-agent"
 }
 
+variable "agent_count_per_instance" {
+  description = "Number of Azure DevOps agents per instance (0 = auto-detect based on vCPU)"
+  type        = number
+  default     = 0
+}
+
 # Networking
 variable "vpc_cidr" {
   description = "CIDR block for VPC"

@@ -71,23 +71,74 @@ cat > /usr/local/bin/start_azdevops_agent.sh << 'AGENT_START_SCRIPT'
 #!/bin/bash
 set -e
 
-echo "Starting Azure DevOps Agent..."
+echo "Starting Azure DevOps Agent(s)..."
 
-# Start agent container
-docker run -d \
-  --name azdevops-agent-$(hostname)-$RANDOM \
-  --restart unless-stopped \
-  -e AZP_URL="$AZP_URL" \
-  -e AZP_TOKEN="$AZP_TOKEN" \
-  -e AZP_POOL="$AZP_POOL" \
-  -e AZP_AGENT_NAME="$AZP_AGENT_NAME" \
-  -e AZP_WORK="/azp/_work" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /azp/_work:/azp/_work \
-  --privileged \
-  fok666/azuredevops:latest
+AZP_URL="${azp_url}"
+AZP_TOKEN="${azp_token}"
+AZP_POOL="${azp_pool}"
+AZP_AGENT_NAME_PREFIX="${azp_agent_name}"
+AGENT_COUNT="${agent_count}"
 
-echo "Azure DevOps Agent started successfully"
+# Auto-detect agent count based on CPU count if agent_count is 0
+if [ "$AGENT_COUNT" = "0" ]; then
+  CPU_COUNT=$(nproc)
+  # Scale agent count based on available CPUs:
+  # 1-2 CPUs: 1 agent, 3-4 CPUs: 2 agents, 5-8 CPUs: 3 agents
+  # 9-16 CPUs: 4 agents, 17+ CPUs: CPU_COUNT / 4 (rounded up)
+  if [ $CPU_COUNT -le 2 ]; then
+    AGENT_COUNT=1
+  elif [ $CPU_COUNT -le 4 ]; then
+    AGENT_COUNT=2
+  elif [ $CPU_COUNT -le 8 ]; then
+    AGENT_COUNT=3
+  elif [ $CPU_COUNT -le 16 ]; then
+    AGENT_COUNT=4
+  else
+    AGENT_COUNT=$(( (CPU_COUNT + 3) / 4 ))
+  fi
+  echo "Auto-detected $CPU_COUNT CPUs, will run $AGENT_COUNT agents"
+fi
+
+# Calculate CPU limit per agent
+CPU_COUNT=$(nproc)
+MAX_CPU=$((CPU_COUNT / AGENT_COUNT))
+[ $MAX_CPU -lt 1 ] && MAX_CPU=1
+
+echo "Starting $AGENT_COUNT Azure DevOps agent(s)..."
+
+# Start multiple agent containers
+for A in $(seq 1 $AGENT_COUNT); do
+  AZP_AGENT_NAME="$AZP_AGENT_NAME_PREFIX-$(hostname)-$A"
+  WORK_DIR="/azp/agent$A/_work"
+  CONTAINER_NAME="azdevops-agent-$A"
+  
+  mkdir -p "$WORK_DIR"
+  
+  echo "Starting agent $A/$AGENT_COUNT: $AZP_AGENT_NAME"
+  
+  if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
+    echo "  Removing existing container: $CONTAINER_NAME"
+    docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
+  fi
+  
+  docker run -d \
+    --name "$CONTAINER_NAME" \
+    --restart unless-stopped \
+    --cpus="$MAX_CPU" \
+    -e AZP_URL="$AZP_URL" \
+    -e AZP_TOKEN="$AZP_TOKEN" \
+    -e AZP_POOL="$AZP_POOL" \
+    -e AZP_AGENT_NAME="$AZP_AGENT_NAME" \
+    -e AZP_WORK="/_work" \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$WORK_DIR":/_work \
+    --privileged \
+    fok666/azuredevops:latest
+  
+  echo "  Container $CONTAINER_NAME started successfully"
+done
+
+echo "All agents started successfully!"
 AGENT_START_SCRIPT
 
 chmod +x /usr/local/bin/start_azdevops_agent.sh

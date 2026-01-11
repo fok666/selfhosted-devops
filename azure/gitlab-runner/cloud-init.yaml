@@ -70,14 +70,33 @@ write_files:
       RUNNER_COUNT="${runner_count}"
       DOCKER_IMAGE="${runner_docker_image}"
       
-      # Auto-detect CPU count if runner_count is 0
+      # Auto-detect runner count based on CPU count if runner_count is 0
       if [ "$RUNNER_COUNT" = "0" ]; then
-        RUNNER_COUNT=$(nproc)
+        CPU_COUNT=$(nproc)
+        # Scale runner count based on available CPUs:
+        # 1-2 CPUs: 1 runner
+        # 3-4 CPUs: 2 runners
+        # 5-8 CPUs: 3 runners
+        # 9-16 CPUs: 4 runners
+        # 17+ CPUs: CPU_COUNT / 4 (rounded up)
+        if [ $CPU_COUNT -le 2 ]; then
+          RUNNER_COUNT=1
+        elif [ $CPU_COUNT -le 4 ]; then
+          RUNNER_COUNT=2
+        elif [ $CPU_COUNT -le 8 ]; then
+          RUNNER_COUNT=3
+        elif [ $CPU_COUNT -le 16 ]; then
+          RUNNER_COUNT=4
+        else
+          RUNNER_COUNT=$(( (CPU_COUNT + 3) / 4 ))
+        fi
+        echo "Auto-detected $CPU_COUNT CPUs, will run $RUNNER_COUNT runners"
       fi
       
-      # Limit CPU per runner
+      # Calculate CPU limit per runner
       CPU_COUNT=$(nproc)
-      MAX_CPU=$((CPU_COUNT > 1 ? 2 : 1))
+      MAX_CPU=$((CPU_COUNT / RUNNER_COUNT))
+      [ $MAX_CPU -lt 1 ] && MAX_CPU=1
       
       echo "Starting $RUNNER_COUNT GitLab runner(s)..."
       

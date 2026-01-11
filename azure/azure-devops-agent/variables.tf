@@ -35,6 +35,12 @@ variable "azp_agent_name_prefix" {
   default     = "azure-agent"
 }
 
+variable "agent_count_per_vm" {
+  description = "Number of Azure DevOps agents per VM (0 = auto-detect based on vCPU)"
+  type        = number
+  default     = 0
+}
+
 # Networking
 variable "vnet_address_space" {
   description = "Address space for VNet"
