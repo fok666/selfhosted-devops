@@ -31,11 +31,11 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ~1.6.0
+          terraform_version: ~1.9.0
 
       - name: Terraform Format Check
         id: fmt
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check
         working-directory: ${{ matrix.terraform-dir }}
         continue-on-error: true
 
@@ -104,17 +104,27 @@ jobs:
         continue-on-error: true
 
   security-scan:
-    name: Security Scan with tfsec
+    name: Security Scan with Trivy
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
+      - name: Run Trivy for Terraform
+        uses: aquasecurity/trivy-action@master
         with:
-          soft_fail: true
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '0'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   documentation-check:
     name: Check Documentation
@@ -128,22 +138,18 @@ jobs:
         run: |
           echo "Checking for required documentation files..."
           
-          required_files=(
-            "README.md"
-            "QUICKSTART.md"
-            "TESTING_GUIDE.md"
-          )
+          required_files="README.md QUICKSTART.md TESTING_GUIDE.md"
+          missing_files=""
           
-          missing_files=()
-          for file in "${required_files[@]}"; do
+          for file in $required_files; do
             if [ ! -f "$file" ]; then
-              missing_files+=("$file")
+              missing_files="$missing_files $file"
             fi
           done
           
-          if [ ${#missing_files[@]} -gt 0 ]; then
+          if [ -n "$missing_files" ]; then
             echo "❌ Missing required documentation files:"
-            printf '%s\n' "${missing_files[@]}"
+            echo "$missing_files"
             exit 1
           fi
           
@@ -153,10 +159,10 @@ jobs:
         run: |
           echo "Checking for README files in main directories..."
           
-          dirs=("aws" "azure" "modules")
+          dirs="aws azure modules"
           warnings=0
           
-          for dir in "${dirs[@]}"; do
+          for dir in $dirs; do
             if [ -d "$dir" ]; then
               subdirs=$(find "$dir" -mindepth 1 -maxdepth 1 -type d)
               for subdir in $subdirs; do
