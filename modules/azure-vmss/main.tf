@@ -42,10 +42,10 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
 
   # OS disk configuration
   os_disk {
-    caching                   = "ReadWrite"
-    storage_account_type      = var.os_disk_type
-    disk_size_gb              = var.os_disk_size_gb
-    disk_encryption_set_id    = var.disk_encryption_set_id
+    caching                          = "ReadWrite"
+    storage_account_type             = var.os_disk_type
+    disk_size_gb                     = var.os_disk_size_gb
+    disk_encryption_set_id           = var.disk_encryption_set_id
     secure_vm_disk_encryption_set_id = var.secure_vm_disk_encryption_set_id
   }
 

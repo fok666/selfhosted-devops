@@ -79,7 +79,7 @@ variable "ssh_source_address_prefixes" {
   description = "Source address prefixes allowed for SSH (only used if enable_ssh_access is true)"
   type        = list(string)
   default     = []
-  
+
   validation {
     condition     = var.enable_ssh_access == false || length(var.ssh_source_address_prefixes) > 0
     error_message = "ssh_source_address_prefixes must be provided when enable_ssh_access is true. Use specific CIDR blocks, not '*' or 'Internet'."

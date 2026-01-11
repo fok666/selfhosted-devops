@@ -79,15 +79,15 @@ resource "azurerm_network_security_group" "agent" {
   dynamic "security_rule" {
     for_each = var.enable_ssh_access && length(var.ssh_source_address_prefixes) > 0 ? [1] : []
     content {
-      name                         = "allow-ssh"
-      priority                     = 1001
-      direction                    = "Inbound"
-      access                       = "Allow"
-      protocol                     = "Tcp"
-      source_port_range            = "*"
-      destination_port_range       = "22"
-      source_address_prefixes      = var.ssh_source_address_prefixes
-      destination_address_prefix   = "*"
+      name                       = "allow-ssh"
+      priority                   = 1001
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "22"
+      source_address_prefixes    = var.ssh_source_address_prefixes
+      destination_address_prefix = "*"
     }
   }
 
@@ -106,7 +106,9 @@ locals {
     azp_url        = var.azp_url
     azp_token      = var.azp_token
     azp_pool       = var.azp_pool
-    azp_agent_name = var.azp_agent_name_prefix    agent_count    = var.agent_count_per_vm  })
+    azp_agent_name = var.azp_agent_name_prefix
+    agent_count    = var.agent_count_per_vm
+  })
 }
 
 # Azure DevOps Agent VMSS
