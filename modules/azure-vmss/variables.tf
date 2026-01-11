@@ -100,6 +100,24 @@ variable "os_disk_type" {
   default     = "StandardSSD_LRS"
 }
 
+variable "os_disk_size_gb" {
+  description = "OS disk size in GB"
+  type        = number
+  default     = 100
+}
+
+variable "disk_encryption_set_id" {
+  description = "ID of the disk encryption set for encrypting managed disks (optional, uses platform-managed keys if not specified)"
+  type        = string
+  default     = null
+}
+
+variable "secure_vm_disk_encryption_set_id" {
+  description = "ID of the disk encryption set for secure VMs (optional)"
+  type        = string
+  default     = null
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

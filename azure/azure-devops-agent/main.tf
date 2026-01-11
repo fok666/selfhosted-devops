@@ -75,17 +75,20 @@ resource "azurerm_network_security_group" "agent" {
     destination_address_prefix = "Internet"
   }
 
-  # Optional: Allow SSH for debugging
-  security_rule {
-    name                       = "allow-ssh"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+  # Optional SSH access (disabled by default for security)
+  dynamic "security_rule" {
+    for_each = var.enable_ssh_access && length(var.ssh_source_address_prefixes) > 0 ? [1] : []
+    content {
+      name                         = "allow-ssh"
+      priority                     = 1001
+      direction                    = "Inbound"
+      access                       = "Allow"
+      protocol                     = "Tcp"
+      source_port_range            = "*"
+      destination_port_range       = "22"
+      source_address_prefixes      = var.ssh_source_address_prefixes
+      destination_address_prefix   = "*"
+    }
   }
 
   tags = var.tags

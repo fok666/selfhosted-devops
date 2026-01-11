@@ -112,13 +112,16 @@ resource "aws_security_group" "agent" {
     description = "Allow all outbound traffic"
   }
 
-  # Optional: Allow SSH for debugging
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow SSH"
+  # Optional SSH access (disabled by default for security)
+  dynamic "ingress" {
+    for_each = var.enable_ssh_access && length(var.ssh_cidr_blocks) > 0 ? [1] : []
+    content {
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = var.ssh_cidr_blocks
+      description = "SSH access from specified CIDR blocks"
+    }
   }
 
   tags = merge(

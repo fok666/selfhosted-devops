@@ -41,6 +41,23 @@ variable "agent_count_per_instance" {
   default     = 0
 }
 
+variable "enable_ssh_access" {
+  description = "Enable SSH access to instances (not recommended for production)"
+  type        = bool
+  default     = false
+}
+
+variable "ssh_cidr_blocks" {
+  description = "CIDR blocks allowed to SSH (only used if enable_ssh_access is true)"
+  type        = list(string)
+  default     = []
+  
+  validation {
+    condition     = var.enable_ssh_access == false || length(var.ssh_cidr_blocks) > 0
+    error_message = "ssh_cidr_blocks must be provided when enable_ssh_access is true. Use specific CIDR blocks, not 0.0.0.0/0."
+  }
+}
+
 # Networking
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
