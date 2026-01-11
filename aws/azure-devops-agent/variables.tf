@@ -78,7 +78,7 @@ variable "min_instances" {
   description = "Minimum number of instances"
   type        = number
   default     = 0
-  
+
   validation {
     condition     = var.min_instances >= 0
     error_message = "Minimum instances must be >= 0"
@@ -89,7 +89,7 @@ variable "max_instances" {
   description = "Maximum number of instances"
   type        = number
   default     = 10
-  
+
   validation {
     condition     = var.max_instances > 0 && var.max_instances <= 100
     error_message = "Maximum instances must be between 1 and 100"
@@ -100,7 +100,7 @@ variable "default_instances" {
   description = "Default number of instances"
   type        = number
   default     = 1
-  
+
   validation {
     condition     = var.default_instances >= 0
     error_message = "Default instances must be >= 0"
@@ -111,7 +111,7 @@ variable "target_cpu_utilization" {
   description = "Target CPU utilization percentage for autoscaling"
   type        = number
   default     = 70
-  
+
   validation {
     condition     = var.target_cpu_utilization > 0 && var.target_cpu_utilization <= 100
     error_message = "CPU utilization must be between 1 and 100"

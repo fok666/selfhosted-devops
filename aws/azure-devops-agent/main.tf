@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -11,7 +11,7 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  
+
   default_tags {
     tags = merge(
       var.tags,
@@ -34,7 +34,7 @@ resource "aws_vpc" "agent" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  
+
   tags = merge(
     var.tags,
     {
@@ -46,7 +46,7 @@ resource "aws_vpc" "agent" {
 # Internet Gateway
 resource "aws_internet_gateway" "agent" {
   vpc_id = aws_vpc.agent.id
-  
+
   tags = merge(
     var.tags,
     {
@@ -58,12 +58,12 @@ resource "aws_internet_gateway" "agent" {
 # Subnets
 resource "aws_subnet" "agent" {
   count = min(length(data.aws_availability_zones.available.names), 3)
-  
+
   vpc_id                  = aws_vpc.agent.id
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
-  
+
   tags = merge(
     var.tags,
     {
@@ -75,12 +75,12 @@ resource "aws_subnet" "agent" {
 # Route Table
 resource "aws_route_table" "agent" {
   vpc_id = aws_vpc.agent.id
-  
+
   route {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.agent.id
   }
-  
+
   tags = merge(
     var.tags,
     {
@@ -92,7 +92,7 @@ resource "aws_route_table" "agent" {
 # Route Table Association
 resource "aws_route_table_association" "agent" {
   count = length(aws_subnet.agent)
-  
+
   subnet_id      = aws_subnet.agent[count.index].id
   route_table_id = aws_route_table.agent.id
 }
@@ -102,7 +102,7 @@ resource "aws_security_group" "agent" {
   name        = "${var.project_name}-agent-sg"
   description = "Security group for Azure DevOps agents"
   vpc_id      = aws_vpc.agent.id
-  
+
   # Allow all outbound traffic (required for Azure DevOps)
   egress {
     from_port   = 0
@@ -111,7 +111,7 @@ resource "aws_security_group" "agent" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow all outbound traffic"
   }
-  
+
   # Optional: Allow SSH for debugging
   ingress {
     from_port   = 22
@@ -120,7 +120,7 @@ resource "aws_security_group" "agent" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "Allow SSH"
   }
-  
+
   tags = merge(
     var.tags,
     {
@@ -132,7 +132,7 @@ resource "aws_security_group" "agent" {
 # IAM Role for EC2 instances
 resource "aws_iam_role" "agent" {
   name = "${var.project_name}-agent-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -145,7 +145,7 @@ resource "aws_iam_role" "agent" {
       }
     ]
   })
-  
+
   tags = var.tags
 }
 
@@ -165,7 +165,7 @@ resource "aws_iam_role_policy_attachment" "cloudwatch" {
 resource "aws_iam_instance_profile" "agent" {
   name = "${var.project_name}-agent-profile"
   role = aws_iam_role.agent.name
-  
+
   tags = var.tags
 }
 
@@ -182,25 +182,25 @@ locals {
 # Azure DevOps Agent ASG
 module "agent_asg" {
   source = "../../modules/aws-asg"
-  
+
   name_prefix = "${var.project_name}-azdevops-agent"
   vpc_id      = aws_vpc.agent.id
   subnet_ids  = aws_subnet.agent[*].id
-  
+
   user_data    = base64encode(local.user_data_rendered)
   docker_image = "fok666/azuredevops:latest"
-  
-  instance_type        = var.instance_types[0]
-  spot_instance_types  = var.instance_types
-  use_spot_instances   = var.use_spot_instances
-  spot_max_price       = var.spot_max_price
-  
+
+  instance_type       = var.instance_types[0]
+  spot_instance_types = var.instance_types
+  use_spot_instances  = var.use_spot_instances
+  spot_max_price      = var.spot_max_price
+
   min_size         = var.min_instances
   max_size         = var.max_instances
   desired_capacity = var.default_instances
-  
+
   enable_monitoring = true
-  
+
   tags = merge(
     var.tags,
     {

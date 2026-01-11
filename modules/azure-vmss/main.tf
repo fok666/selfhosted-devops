@@ -4,7 +4,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = ">= 3.0, < 5.0"
     }
   }
 }
@@ -49,8 +49,8 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
 
   # Network configuration
   network_interface {
-    name                      = "${var.vmss_name}-nic"
-    primary                   = true
+    name                          = "${var.vmss_name}-nic"
+    primary                       = true
     enable_accelerated_networking = var.enable_accelerated_networking
 
     ip_configuration {
@@ -109,7 +109,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   tags = merge(
     var.tags,
     {
-      ManagedBy = "Terraform"
+      ManagedBy    = "Terraform"
       SpotInstance = var.use_spot_instances ? "true" : "false"
     }
   )

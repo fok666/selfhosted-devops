@@ -15,7 +15,7 @@ provider "azurerm" {
 
 locals {
   runner_name = "${var.project_name}-gitlab-runner"
-  
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml", {
     gitlab_url          = var.gitlab_url
     gitlab_token        = var.gitlab_token

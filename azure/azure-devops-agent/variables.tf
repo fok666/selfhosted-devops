@@ -53,7 +53,7 @@ variable "vm_sku" {
   description = "Azure VM size"
   type        = string
   default     = "Standard_D2s_v3"
-  
+
   validation {
     condition     = can(regex("^Standard_", var.vm_sku))
     error_message = "VM SKU must start with 'Standard_'"
@@ -89,7 +89,7 @@ variable "min_instances" {
   description = "Minimum number of instances"
   type        = number
   default     = 0
-  
+
   validation {
     condition     = var.min_instances >= 0
     error_message = "Minimum instances must be >= 0"
@@ -100,7 +100,7 @@ variable "max_instances" {
   description = "Maximum number of instances"
   type        = number
   default     = 10
-  
+
   validation {
     condition     = var.max_instances > 0 && var.max_instances <= 100
     error_message = "Maximum instances must be between 1 and 100"
@@ -111,7 +111,7 @@ variable "default_instances" {
   description = "Default number of instances"
   type        = number
   default     = 1
-  
+
   validation {
     condition     = var.default_instances >= 0
     error_message = "Default instances must be >= 0"
@@ -122,7 +122,7 @@ variable "scale_out_cpu_threshold" {
   description = "CPU threshold to scale out"
   type        = number
   default     = 75
-  
+
   validation {
     condition     = var.scale_out_cpu_threshold > 0 && var.scale_out_cpu_threshold <= 100
     error_message = "CPU threshold must be between 1 and 100"
@@ -133,7 +133,7 @@ variable "scale_in_cpu_threshold" {
   description = "CPU threshold to scale in"
   type        = number
   default     = 25
-  
+
   validation {
     condition     = var.scale_in_cpu_threshold > 0 && var.scale_in_cpu_threshold <= 100
     error_message = "CPU threshold must be between 1 and 100"

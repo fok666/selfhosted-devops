@@ -52,9 +52,9 @@ output "azure_devops_pool" {
 output "quick_commands" {
   description = "Useful management commands"
   value = {
-    list_instances = "az vmss list-instances --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --output table"
-    scale_manual   = "az vmss scale --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --new-capacity <number>"
-    view_logs      = "az vmss get-instance-view --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --instance-id <id>"
+    list_instances  = "az vmss list-instances --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --output table"
+    scale_manual    = "az vmss scale --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --new-capacity <number>"
+    view_logs       = "az vmss get-instance-view --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name} --instance-id <id>"
     ssh_to_instance = "az vmss list-instance-public-ips --resource-group ${azurerm_resource_group.agent.name} --name ${module.agent_vmss.vmss_name}"
   }
 }

@@ -46,19 +46,19 @@ output "azure_devops_pool" {
 output "quick_commands" {
   description = "Useful management commands"
   value = {
-    list_instances = "aws autoscaling describe-auto-scaling-instances --query 'AutoScalingInstances[?AutoScalingGroupName==`${module.agent_asg.asg_name}`]' --output table"
-    scale_manual   = "aws autoscaling set-desired-capacity --auto-scaling-group-name ${module.agent_asg.asg_name} --desired-capacity <number>"
-    view_activity  = "aws autoscaling describe-scaling-activities --auto-scaling-group-name ${module.agent_asg.asg_name} --max-records 10"
+    list_instances  = "aws autoscaling describe-auto-scaling-instances --query 'AutoScalingInstances[?AutoScalingGroupName==`${module.agent_asg.asg_name}`]' --output table"
+    scale_manual    = "aws autoscaling set-desired-capacity --auto-scaling-group-name ${module.agent_asg.asg_name} --desired-capacity <number>"
+    view_activity   = "aws autoscaling describe-scaling-activities --auto-scaling-group-name ${module.agent_asg.asg_name} --max-records 10"
     ssh_to_instance = "aws ssm start-session --target <instance-id>"
-    view_logs      = "aws logs tail /aws/ec2/azure-devops-agent --follow"
+    view_logs       = "aws logs tail /aws/ec2/azure-devops-agent --follow"
   }
 }
 
 output "monitoring_urls" {
   description = "CloudWatch monitoring URLs"
   value = {
-    asg_metrics    = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#alarmsV2:alarm/${module.agent_asg.asg_name}"
-    ec2_metrics    = "https://console.aws.amazon.com/ec2/v2/home?region=${var.aws_region}#Instances:tag:aws:autoscaling:groupName=${module.agent_asg.asg_name}"
-    cost_explorer  = "https://console.aws.amazon.com/cost-management/home?region=${var.aws_region}#/cost-explorer"
+    asg_metrics   = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#alarmsV2:alarm/${module.agent_asg.asg_name}"
+    ec2_metrics   = "https://console.aws.amazon.com/ec2/v2/home?region=${var.aws_region}#Instances:tag:aws:autoscaling:groupName=${module.agent_asg.asg_name}"
+    cost_explorer = "https://console.aws.amazon.com/cost-management/home?region=${var.aws_region}#/cost-explorer"
   }
 }

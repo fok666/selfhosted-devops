@@ -15,7 +15,7 @@ provider "aws" {
 
 locals {
   runner_name = "${var.project_name}-gitlab-runner"
-  
+
   user_data = templatefile("${path.module}/user-data.sh", {
     gitlab_url          = var.gitlab_url
     gitlab_token        = var.gitlab_token

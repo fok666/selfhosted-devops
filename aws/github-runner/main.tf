@@ -15,7 +15,7 @@ provider "aws" {
 
 locals {
   runner_name = "${var.project_name}-github-runner"
-  
+
   user_data = templatefile("${path.module}/user-data.sh", {
     github_url          = var.github_url
     github_token        = var.github_token

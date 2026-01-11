@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -27,7 +27,7 @@ resource "tls_private_key" "agent" {
 resource "azurerm_resource_group" "agent" {
   name     = "${var.project_name}-rg"
   location = var.location
-  
+
   tags = merge(
     var.tags,
     {
@@ -44,7 +44,7 @@ resource "azurerm_virtual_network" "agent" {
   address_space       = [var.vnet_address_space]
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
-  
+
   tags = var.tags
 }
 
@@ -61,7 +61,7 @@ resource "azurerm_network_security_group" "agent" {
   name                = "${var.project_name}-nsg"
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
-  
+
   # Allow outbound internet (required for Azure DevOps)
   security_rule {
     name                       = "allow-outbound-internet"
@@ -74,7 +74,7 @@ resource "azurerm_network_security_group" "agent" {
     source_address_prefix      = "*"
     destination_address_prefix = "Internet"
   }
-  
+
   # Optional: Allow SSH for debugging
   security_rule {
     name                       = "allow-ssh"
@@ -87,7 +87,7 @@ resource "azurerm_network_security_group" "agent" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
-  
+
   tags = var.tags
 }
 
@@ -110,25 +110,25 @@ locals {
 # Azure DevOps Agent VMSS
 module "agent_vmss" {
   source = "../../modules/azure-vmss"
-  
+
   vmss_name           = "${var.project_name}-azdevops-agent"
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
-  
+
   subnet_id      = azurerm_subnet.agent.id
   ssh_public_key = tls_private_key.agent.public_key_openssh
-  
+
   custom_data  = base64encode(local.cloud_init_rendered)
   docker_image = "fok666/azuredevops:latest"
-  
-  vm_sku              = var.vm_sku
-  min_instances       = var.min_instances
-  max_instances       = var.max_instances
-  default_instances   = var.default_instances
-  use_spot_instances  = var.use_spot_instances
-  spot_max_price      = var.spot_max_price
-  zones               = var.zones
-  
+
+  vm_sku             = var.vm_sku
+  min_instances      = var.min_instances
+  max_instances      = var.max_instances
+  default_instances  = var.default_instances
+  use_spot_instances = var.use_spot_instances
+  spot_max_price     = var.spot_max_price
+  zones              = var.zones
+
   tags = merge(
     var.tags,
     {

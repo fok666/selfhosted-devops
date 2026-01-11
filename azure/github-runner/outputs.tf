@@ -22,10 +22,10 @@ output "ssh_private_key" {
 output "runner_info" {
   description = "GitHub runner information"
   value = {
-    github_url   = var.github_url
+    github_url    = var.github_url
     runner_labels = var.runner_labels
-    docker_image = var.docker_image
-    vm_sku       = var.vm_sku
-    spot_enabled = var.use_spot_instances
+    docker_image  = var.docker_image
+    vm_sku        = var.vm_sku
+    spot_enabled  = var.use_spot_instances
   }
 }
