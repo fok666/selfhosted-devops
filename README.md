@@ -2,6 +2,8 @@
 
 Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI/CD runners on Azure and AWS.
 
+[![CodeQL](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql) [![Dependabot Updates](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates) [![Terraform Validation](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml)
+
 ## Supported Runners
 
 - **GitLab Runner** - [fok666/gitlab-selfhosted-runner](https://github.com/fok666/gitlab-selfhosted-runner)
