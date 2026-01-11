@@ -61,19 +61,7 @@ variable "spot_max_price" {
   default     = ""
 }
 
-variable "spot_instance_pools" {
-  description = "Number of spot instance pools to diversify across"
-  type        = number
-  default     = 3
-}
-
 # Autoscaling Configuration
-variable "enable_autoscaling" {
-  description = "Enable autoscaling for ASG"
-  type        = bool
-  default     = true
-}
-
 variable "min_instances" {
   description = "Minimum number of instances"
   type        = number
@@ -104,17 +92,6 @@ variable "default_instances" {
   validation {
     condition     = var.default_instances >= 0
     error_message = "Default instances must be >= 0"
-  }
-}
-
-variable "target_cpu_utilization" {
-  description = "Target CPU utilization percentage for autoscaling"
-  type        = number
-  default     = 70
-
-  validation {
-    condition     = var.target_cpu_utilization > 0 && var.target_cpu_utilization <= 100
-    error_message = "CPU utilization must be between 1 and 100"
   }
 }
 

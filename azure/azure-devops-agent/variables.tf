@@ -79,12 +79,6 @@ variable "zones" {
 }
 
 # Autoscaling Configuration
-variable "enable_autoscaling" {
-  description = "Enable autoscaling for VMSS"
-  type        = bool
-  default     = true
-}
-
 variable "min_instances" {
   description = "Minimum number of instances"
   type        = number
@@ -115,28 +109,6 @@ variable "default_instances" {
   validation {
     condition     = var.default_instances >= 0
     error_message = "Default instances must be >= 0"
-  }
-}
-
-variable "scale_out_cpu_threshold" {
-  description = "CPU threshold to scale out"
-  type        = number
-  default     = 75
-
-  validation {
-    condition     = var.scale_out_cpu_threshold > 0 && var.scale_out_cpu_threshold <= 100
-    error_message = "CPU threshold must be between 1 and 100"
-  }
-}
-
-variable "scale_in_cpu_threshold" {
-  description = "CPU threshold to scale in"
-  type        = number
-  default     = 25
-
-  validation {
-    condition     = var.scale_in_cpu_threshold > 0 && var.scale_in_cpu_threshold <= 100
-    error_message = "CPU threshold must be between 1 and 100"
   }
 }
 
