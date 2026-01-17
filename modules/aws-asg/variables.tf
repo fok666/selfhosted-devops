@@ -185,6 +185,53 @@ variable "egress_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "egress_from_port" {
+  description = <<-EOT
+    Starting port for outbound traffic - USE WITH UNDERSTANDING.
+    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    
+    Common port restrictions:
+    - 443 only: HTTPS traffic only (may break some CI/CD operations)
+    - 80,443: HTTP/HTTPS only
+    - 0: All ports (default, required for typical CI/CD)
+    
+    Note: When protocol is "-1" (all), this must be 0.
+    Default: 0 (all ports)
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "egress_to_port" {
+  description = <<-EOT
+    Ending port for outbound traffic - USE WITH UNDERSTANDING.
+    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    
+    Note: When protocol is "-1" (all), this must be 0.
+    Default: 0 (all ports)
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "egress_protocol" {
+  description = <<-EOT
+    Protocol for outbound traffic - USE WITH UNDERSTANDING.
+    Default "-1" allows all protocols (TCP, UDP, ICMP, etc.), required for typical CI/CD.
+    
+    Common values:
+    - "-1": All protocols (default, required for typical CI/CD)
+    - "tcp": TCP only (port 6)
+    - "udp": UDP only (port 17)
+    - "icmp": ICMP only (port 1)
+    
+    Note: Use protocol numbers (6 for TCP, 17 for UDP) or "-1" for all.
+    Default: "-1" (all protocols)
+  EOT
+  type        = string
+  default     = "-1"
+}
+
 variable "capacity_rebalance" {
   description = "Enable capacity rebalancing for spot instances"
   type        = bool

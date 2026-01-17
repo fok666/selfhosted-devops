@@ -140,6 +140,79 @@ variable "associate_public_ip_address" {
   default     = false
 }
 
+variable "egress_cidr_blocks" {
+  description = <<-EOT
+    CIDR blocks for outbound traffic from security group - USE WITH UNDERSTANDING.
+    Default ["0.0.0.0/0"] allows all outbound traffic, which is typically required for:
+    - Connecting to GitLab (gitlab.com)
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    - Accessing public APIs and services
+    
+    Security Considerations:
+    ✓ RECOMMENDED for most CI/CD use cases (default)
+    ⚠️ Restrict if you have strict egress filtering requirements
+    ⚠️ Use VPC endpoints for AWS services to keep traffic in AWS network
+    ⚠️ Consider using VPC Flow Logs for monitoring outbound traffic
+    
+    To restrict egress (advanced):
+    - Specify only required CIDR blocks (e.g., GitLab IP ranges)
+    - Use VPC endpoints for AWS services (S3, ECR, etc.)
+    - May break GitLab connectivity if misconfigured
+    
+    Default: ["0.0.0.0/0"] (allows all outbound - required for typical CI/CD)
+  EOT
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "egress_from_port" {
+  description = <<-EOT
+    Starting port for outbound traffic - USE WITH UNDERSTANDING.
+    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    
+    Common port restrictions:
+    - 443 only: HTTPS traffic only (may break some CI/CD operations)
+    - 80,443: HTTP/HTTPS only
+    - 0: All ports (default, required for typical CI/CD)
+    
+    Note: When protocol is "-1" (all), this must be 0.
+    Default: 0 (all ports)
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "egress_to_port" {
+  description = <<-EOT
+    Ending port for outbound traffic - USE WITH UNDERSTANDING.
+    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    
+    Note: When protocol is "-1" (all), this must be 0.
+    Default: 0 (all ports)
+  EOT
+  type        = number
+  default     = 0
+}
+
+variable "egress_protocol" {
+  description = <<-EOT
+    Protocol for outbound traffic - USE WITH UNDERSTANDING.
+    Default "-1" allows all protocols (TCP, UDP, ICMP, etc.), required for typical CI/CD.
+    
+    Common values:
+    - "-1": All protocols (default, required for typical CI/CD)
+    - "tcp": TCP only (port 6)
+    - "udp": UDP only (port 17)
+    - "icmp": ICMP only (port 1)
+    
+    Note: Use protocol numbers (6 for TCP, 17 for UDP) or "-1" for all.
+    Default: "-1" (all protocols)
+  EOT
+  type        = string
+  default     = "-1"
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

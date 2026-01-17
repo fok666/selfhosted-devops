@@ -63,6 +63,10 @@ module "gitlab_runner_asg" {
   # Security configuration
   enable_imdsv2               = var.enable_imdsv2
   associate_public_ip_address = var.associate_public_ip_address
+  egress_cidr_blocks          = var.egress_cidr_blocks
+  egress_from_port            = var.egress_from_port
+  egress_to_port              = var.egress_to_port
+  egress_protocol             = var.egress_protocol
 
   tags = var.tags
 }

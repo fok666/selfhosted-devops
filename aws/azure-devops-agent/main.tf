@@ -105,9 +105,9 @@ resource "aws_security_group" "agent" {
 
   # Allow outbound traffic (configurable, defaults to all traffic for Azure DevOps connectivity)
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = var.egress_from_port
+    to_port     = var.egress_to_port
+    protocol    = var.egress_protocol
     cidr_blocks = var.egress_cidr_blocks
     description = "Allow outbound traffic to specified CIDR blocks"
   }
