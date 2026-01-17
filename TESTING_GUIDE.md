@@ -4,6 +4,8 @@
 
 This guide provides comprehensive testing procedures for validating self-hosted DevOps runner infrastructure before production deployment.
 
+**✅ Automated Testing**: All GitLab Runner implementations include automated Terraform tests. See [TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md) for details on the native Terraform test framework.
+
 ## Testing Environment Requirements
 
 ### Prerequisites
