@@ -799,7 +799,7 @@ When working on this project:
 7. **Follow multi-cloud patterns**: Keep Azure and AWS implementations consistent
 8. **Validate thoroughly**: Run `terraform fmt` and `terraform validate` on all changes
 9. **Think production-ready**: Every change should be production-grade, not a proof-of-concept
-10. **Consider PR creation**: For significant changes, suggest creating a pull request for review
+10. **Create a Pull Request**: Propose all code changes via a pull request for review.
 
 ## Questions to Ask Before Coding
 
