@@ -319,9 +319,6 @@ jobs:
         run: |
           npm install -g \
             semantic-release@^23.0.0 \
-            @semantic-release/git@^10.0.0 \
-            @semantic-release/changelog@^6.0.0 \
-            @semantic-release/exec@^6.0.0 \
             conventional-changelog-conventionalcommits@^7.0.0
 
       - name: Create .releaserc.json
@@ -369,19 +366,6 @@ jobs:
                   }
                 }
               ],
-              [
-                "@semantic-release/changelog",
-                {
-                  "changelogFile": "CHANGELOG.md"
-                }
-              ],
-              [
-                "@semantic-release/git",
-                {
-                  "assets": ["CHANGELOG.md"],
-                  "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-                }
-              ],
               "@semantic-release/github"
             ]
           }
@@ -397,8 +381,8 @@ jobs:
         run: |
           echo "## 🎉 Semantic Release Completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Git tag created (if version bumped)" >> $GITHUB_STEP_SUMMARY
-          echo "- GitHub release published (if version bumped)" >> $GITHUB_STEP_SUMMARY
-          echo "- CHANGELOG.md updated" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Git tag created (if version bumped)" >> $GITHUB_STEP_SUMMARY
+          echo "✅ GitHub release published (if version bumped)" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Release workflow will be triggered automatically" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check [Releases](https://github.com/${{ github.repository }}/releases) for the new version." >> $GITHUB_STEP_SUMMARY
