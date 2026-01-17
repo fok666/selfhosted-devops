@@ -2,6 +2,9 @@
 # Azure DevOps Agent User Data Script
 # This script sets up a self-hosted Azure Pipelines agent with Docker-in-Docker support
 
+# shellcheck disable=SC2154
+# Note: Variables like azp_url, azp_token, azp_pool are Terraform template variables
+
 set -e
 exec > >(tee /var/log/azdevops-agent-init.log)
 exec 2>&1

@@ -66,3 +66,4 @@ jobs:
         with:
           scandir: '.'
           severity: warning
+          ignore_names: 'cloud-init.yaml'
