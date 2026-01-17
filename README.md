@@ -213,11 +213,11 @@ azp_token    = "pat-xxxx"   # Azure DevOps
 #### Cost-Optimized Defaults
 ```hcl
 # Instance Configuration
-use_spot_instances    = true              # 60-90% savings (DEFAULT)
-min_instances         = 0                 # Scale to zero (DEFAULT)
-max_instances         = 10                # Safety limit (DEFAULT)
-default_instances     = 1                 # Initial capacity (DEFAULT)
-instance_count_per_vm = 0                 # Auto-detect from vCPU (DEFAULT)
+use_spot_instances         = true              # 60-90% savings (DEFAULT)
+min_instances              = 0                 # Scale to zero (DEFAULT)
+max_instances              = 10                # Safety limit (DEFAULT)
+default_instances          = 1                 # Initial capacity (DEFAULT)
+runner_count_per_instance  = 0                 # Auto-detect from vCPU (DEFAULT)
 
 # VM/Instance Size
 vm_sku                = "Standard_D2s_v3" # Azure: 2 vCPU, 8GB (DEFAULT)
@@ -251,12 +251,12 @@ egress_cidr_blocks             = ["0.0.0.0/0"]  # AWS: All egress (DEFAULT)
 #### Performance-Optimized Configuration
 ```hcl
 # For faster builds (higher cost)
-use_spot_instances    = false             # Guaranteed availability
-vm_sku                = "Standard_F4s_v2" # 4 vCPU, compute-optimized
-os_disk_size_gb       = 128               # More caching space
-os_disk_type          = "Premium_LRS"     # 2-3x faster I/O
-min_instances         = 2                 # Always ready
-instance_count_per_vm = 1                 # Dedicated resources
+use_spot_instances         = false             # Guaranteed availability
+vm_sku                     = "Standard_F4s_v2" # 4 vCPU, compute-optimized
+os_disk_size_gb            = 128               # More caching space
+os_disk_type               = "Premium_LRS"     # 2-3x faster I/O
+min_instances              = 2                 # Always ready
+runner_count_per_instance  = 1                 # Dedicated resources
 
 # Cost impact: ~3-4x vs defaults, 30-50% faster builds
 ```

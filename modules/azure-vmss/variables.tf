@@ -66,8 +66,21 @@ variable "custom_data" {
   type        = string
 }
 
-variable "runner_count_per_vm" {
-  description = "Number of runners per VM (0 = auto-detect based on vCPU count)"
+variable "runner_count_per_instance" {
+  description = <<-EOT
+    Number of runners per VM/instance. Set to 0 for auto-detection based on vCPU count.
+    
+    **Resource Allocation:**
+    - 0 = Auto-detect (recommended): Uses number of vCPUs
+    - 1 = Dedicated: One runner with full VM resources
+    - 2+ = Shared: Multiple runners sharing VM resources
+    
+    **Cost/Performance Tradeoff:**
+    - Higher count = Better VM utilization = Lower cost per runner
+    - Lower count = More resources per runner = Better performance
+    
+    **Default:** 0 (auto-detect based on vCPU count)
+  EOT
   type        = number
   default     = 0
 }
@@ -146,8 +159,8 @@ variable "source_image_reference" {
   })
   default = {
     publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
     version   = "latest"
   }
 }

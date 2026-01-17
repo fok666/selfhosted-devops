@@ -82,9 +82,9 @@ variable "default_instances" {
   default     = 1
 }
 
-variable "instance_count_per_vm" {
+variable "runner_count_per_instance" {
   description = <<-EOT
-    Number of GitLab runners per VM (0 = auto-detect based on vCPU count).
+    Number of GitLab runners per VM/instance (0 = auto-detect based on vCPU count).
     
     Cost/Performance Tradeoff:
     - Lower values (1-2): More stable, easier to manage, better isolation

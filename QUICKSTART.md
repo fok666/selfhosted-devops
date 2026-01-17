@@ -113,7 +113,7 @@ os_disk_size_gb       = 128   # More space for large builds
 os_disk_type          = "Premium_LRS"  # Faster I/O
 
 # Generic naming (works for all runner types)
-instance_count_per_vm = 0     # Auto-detect based on vCPU
+runner_count_per_instance = 0     # Auto-detect based on vCPU
 
 # Network (customize if needed)
 vnet_address_space    = "10.1.0.0/16"
