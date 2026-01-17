@@ -140,6 +140,12 @@ variable "existing_subnet_ids" {
   default     = []
 }
 
+variable "existing_internet_gateway_id" {
+  description = "ID of existing Internet Gateway (optional, only used when create_vpc = true and create_internet_gateway = false)"
+  type        = string
+  default     = ""
+}
+
 variable "existing_security_group_id" {
   description = "ID of existing Security Group (required when create_security_group = false)"
   type        = string

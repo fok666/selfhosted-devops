@@ -41,6 +41,15 @@ data "aws_security_group" "existing" {
   id    = var.existing_security_group_id
 }
 
+# Existing Internet Gateway (when using existing infrastructure with new VPC)
+data "aws_internet_gateway" "existing" {
+  count = var.create_vpc && !var.create_internet_gateway && var.existing_internet_gateway_id != "" ? 1 : 0
+  filter {
+    name   = "internet-gateway-id"
+    values = [var.existing_internet_gateway_id]
+  }
+}
+
 # =============================================================================
 # VPC (created only if create_vpc = true)
 # =============================================================================
@@ -112,7 +121,7 @@ resource "aws_route_table" "runner" {
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.runner[0].id
+    gateway_id = local.internet_gateway_id
   }
 
   tags = merge(
@@ -207,6 +216,11 @@ locals {
     var.existing_vpc_id != "" ? var.existing_vpc_id : (
       var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default[0].id
     )
+  )
+
+  # Internet Gateway ID
+  internet_gateway_id = var.create_internet_gateway ? aws_internet_gateway.runner[0].id : (
+    var.existing_internet_gateway_id != "" ? var.existing_internet_gateway_id : null
   )
 
   # Subnet IDs - priority: created > existing_subnet_ids > subnet_ids (deprecated) > default
