@@ -59,7 +59,6 @@ run_tests() {
 # Track results
 failed_tests=()
 passed_tests=()
-skipped_tests=()
 
 # Test modules
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
