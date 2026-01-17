@@ -290,7 +290,7 @@ locals {
 
   # Internet Gateway ID
   internet_gateway_id = var.create_internet_gateway ? aws_internet_gateway.agent[0].id : (
-    var.existing_internet_gateway_id != "" ? var.existing_internet_gateway_id : null
+    var.existing_internet_gateway_id != "" ? data.aws_internet_gateway.existing[0].id : null
   )
 
   # Subnet IDs
