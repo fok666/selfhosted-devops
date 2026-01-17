@@ -95,6 +95,66 @@ variable "nsg_outbound_internet_access" {
   default     = true
 }
 
+variable "nsg_outbound_protocol" {
+  description = <<-EOT
+    Protocol for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Security Best Practice: Use "Tcp" for HTTPS-only (port 443)
+    Compatibility: Use "*" if your CI/CD requires multiple protocols
+    
+    Common values:
+    - "Tcp": TCP only (RECOMMENDED - secure, covers HTTPS)
+    - "*": All protocols (use only if required by your CI/CD workflow)
+    
+    Default: "Tcp" (secure by default, HTTPS-only)
+  EOT
+  type        = string
+  default     = "Tcp"
+
+  validation {
+    condition     = contains(["Tcp", "Udp", "Icmp", "*"], var.nsg_outbound_protocol)
+    error_message = "nsg_outbound_protocol must be one of: Tcp, Udp, Icmp, *"
+  }
+}
+
+variable "nsg_outbound_destination_port_range" {
+  description = <<-EOT
+    Destination port range for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Security Best Practice: Use "443" for HTTPS-only
+    Compatibility: Use "*" if your CI/CD requires multiple ports
+    
+    Common values:
+    - "443": HTTPS only (RECOMMENDED - secure, covers most CI/CD)
+    - "80,443": HTTP and HTTPS
+    - "*": All ports (use only if required by your CI/CD workflow)
+    
+    Default: "443" (secure by default, HTTPS-only)
+  EOT
+  type        = string
+  default     = "443"
+}
+
+variable "nsg_outbound_destination_address_prefix" {
+  description = <<-EOT
+    Destination address prefix for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Default "Internet" allows outbound to any internet address, required for:
+    - Connecting to Azure DevOps (dev.azure.com)
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    
+    Security Considerations:
+    - "Internet": All internet addresses (RECOMMENDED for CI/CD)
+    - Specific CIDR: Restrict to specific IP ranges (advanced, may break CI/CD)
+    - Service Tag: Use Azure Service Tags (e.g., "AzureDevOps")
+    
+    Default: "Internet" (required for typical CI/CD)
+  EOT
+  type        = string
+  default     = "Internet"
+}
+
 # =============================================================================
 # Network Configuration
 # =============================================================================

@@ -63,19 +63,19 @@ resource "azurerm_network_security_group" "agent" {
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
 
-  # Allow outbound internet access (configurable, defaults to enabled for Azure DevOps connectivity)
+  # Allow outbound internet access (configurable, defaults to HTTPS/TCP only for security)
   dynamic "security_rule" {
     for_each = var.nsg_outbound_internet_access ? [1] : []
     content {
-      name                       = "allow-https-outbound-internet"
+      name                       = "AllowInternetOutbound"
       priority                   = 100
       direction                  = "Outbound"
       access                     = "Allow"
-      protocol                   = "*"
+      protocol                   = var.nsg_outbound_protocol
       source_port_range          = "*"
-      destination_port_range     = "*"
+      destination_port_range     = var.nsg_outbound_destination_port_range
       source_address_prefix      = "*"
-      destination_address_prefix = "Internet"
+      destination_address_prefix = var.nsg_outbound_destination_address_prefix
     }
   }
 
