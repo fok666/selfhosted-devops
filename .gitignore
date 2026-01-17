@@ -43,3 +43,5 @@ Thumbs.db
 *.backup
 *.bak
 *.orig
+
+IMPLEMENTATION_SUMMARY.md
