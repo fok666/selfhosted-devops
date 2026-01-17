@@ -70,6 +70,95 @@ resource "aws_vpc" "runner" {
 }
 
 # =============================================================================
+# VPC Flow Logs (created only if create_vpc = true and enable_vpc_flow_logs = true)
+# =============================================================================
+
+# CloudWatch Log Group for VPC Flow Logs
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  count = var.create_vpc && var.enable_vpc_flow_logs ? 1 : 0
+
+  name              = "/aws/vpc/flowlogs/${var.project_name}"
+  retention_in_days = var.vpc_flow_logs_retention_days
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.project_name}-vpc-flow-logs"
+    }
+  )
+}
+
+# IAM Role for VPC Flow Logs
+resource "aws_iam_role" "vpc_flow_logs" {
+  count = var.create_vpc && var.enable_vpc_flow_logs ? 1 : 0
+
+  name = "${var.project_name}-vpc-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AWSVPCFlowLogsAssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.project_name}-vpc-flow-logs-role"
+    }
+  )
+}
+
+# IAM Policy for VPC Flow Logs
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  count = var.create_vpc && var.enable_vpc_flow_logs ? 1 : 0
+
+  name = "${var.project_name}-vpc-flow-logs-policy"
+  role = aws_iam_role.vpc_flow_logs[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# VPC Flow Logs
+resource "aws_flow_log" "vpc" {
+  count = var.create_vpc && var.enable_vpc_flow_logs ? 1 : 0
+
+  vpc_id          = aws_vpc.runner[0].id
+  traffic_type    = var.vpc_flow_logs_traffic_type
+  iam_role_arn    = aws_iam_role.vpc_flow_logs[0].arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_logs[0].arn
+
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.project_name}-vpc-flow-logs"
+    }
+  )
+}
+
+# =============================================================================
 # Internet Gateway (created only if create_internet_gateway = true)
 # =============================================================================
 

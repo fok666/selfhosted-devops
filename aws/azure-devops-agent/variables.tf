@@ -76,6 +76,72 @@ variable "create_vpc" {
   default     = true
 }
 
+variable "enable_vpc_flow_logs" {
+  description = <<-EOT
+    Enable VPC Flow Logs for network traffic monitoring and security analysis.
+    
+    Security Best Practice: ENABLED (default)
+    
+    Benefits:
+    - Monitor and troubleshoot connectivity issues
+    - Detect anomalous traffic patterns
+    - Investigate security incidents
+    - Meet compliance requirements (PCI-DSS, HIPAA, etc.)
+    
+    Cost Impact:
+    - CloudWatch Logs storage: ~$0.50/GB/month
+    - Typical CI/CD runner: ~1-5 GB/month = $0.50-$2.50/month
+    
+    Default: true (security best practice, logs REJECT traffic only)
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "vpc_flow_logs_traffic_type" {
+  description = <<-EOT
+    Type of traffic to log in VPC Flow Logs.
+    
+    Security Best Practice: "REJECT" (default) - logs only rejected traffic
+    
+    Options:
+    - "REJECT": Log only rejected traffic (RECOMMENDED - security-focused, lower cost)
+    - "ACCEPT": Log only accepted traffic (troubleshooting)
+    - "ALL": Log all traffic (comprehensive but higher cost)
+    
+    Default: "REJECT" (security best practice, lower cost)
+  EOT
+  type        = string
+  default     = "REJECT"
+
+  validation {
+    condition     = contains(["ACCEPT", "REJECT", "ALL"], var.vpc_flow_logs_traffic_type)
+    error_message = "vpc_flow_logs_traffic_type must be one of: ACCEPT, REJECT, ALL"
+  }
+}
+
+variable "vpc_flow_logs_retention_days" {
+  description = <<-EOT
+    Number of days to retain VPC Flow Logs in CloudWatch.
+    
+    Common values:
+    - 7: One week (compliance minimum)
+    - 30: One month (RECOMMENDED for most use cases)
+    - 90: Three months (extended security analysis)
+    - 365: One year (compliance requirements)
+    - 0: Never expire (not recommended, unlimited cost growth)
+    
+    Default: 30 days (balanced cost and security)
+  EOT
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.vpc_flow_logs_retention_days >= 0
+    error_message = "vpc_flow_logs_retention_days must be >= 0"
+  }
+}
+
 variable "create_subnets" {
   description = <<-EOT
     Create new Subnets or use existing ones.
