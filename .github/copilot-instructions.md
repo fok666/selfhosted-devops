@@ -677,18 +677,129 @@ variable "enable_ssh_access" { }
 variable "runner_registration_timeout_seconds" { }
 ```
 
+## Git Workflow
+
+### Branch Strategy
+
+**REQUIRED**: Always create changes in a separate branch, never commit directly to main/master.
+
+```bash
+# Create feature branch with descriptive name
+git checkout -b feature/add-spot-diversification
+git checkout -b fix/security-group-rules
+git checkout -b docs/update-cost-guidance
+
+# Make changes, commit with proper messages
+git add .
+git commit -m "feat(aws): add spot instance diversification
+
+Implements mixed instances policy for AWS ASG to improve
+spot instance availability across multiple instance types.
+
+Impact:
+- Cost: Neutral (still using spot instances)
+- Security: Neutral
+- Performance: Improved (better spot availability)
+
+Testing:
+- Validated terraform fmt and validate
+- Tested deployment in dev environment
+- Verified spot instance mix in AWS console"
+
+# Push branch
+git push -u origin feature/add-spot-diversification
+```
+
+### Pull Request Creation
+
+**OPTIONAL**: Create GitHub Pull Requests when:
+- ✅ Changes are significant or affect multiple files
+- ✅ Changes modify security configurations
+- ✅ Changes impact cost or performance characteristics
+- ✅ Working in a team environment requiring code review
+- ✅ Changes need documentation review before merge
+
+**Skip PR for**:
+- Minor documentation fixes (typos, formatting)
+- Local testing branches not intended for merge
+- Emergency hotfixes (but document thoroughly in commit)
+
+```bash
+# After pushing branch, create PR using GitHub CLI (if available)
+gh pr create \
+  --title "Add spot instance diversification for AWS ASG" \
+  --body "## Summary
+Implements mixed instances policy to improve spot availability.
+
+## Changes
+- Added spot_instance_types variable
+- Updated launch template configuration
+- Added validation for instance type list
+
+## Testing
+- [x] terraform fmt
+- [x] terraform validate
+- [x] Deployed to test environment
+- [x] Verified autoscaling behavior
+- [x] Checked cost impact
+
+## Documentation
+- [x] Updated README.md
+- [x] Updated terraform.tfvars.example
+- [x] Added cost impact notes
+
+## Checklist
+- [x] Security defaults maintained
+- [x] Multi-cloud consistency preserved
+- [x] Cost optimization principles followed
+- [x] All documentation updated" \
+  --label "enhancement" \
+  --label "terraform"
+```
+
+### PR Best Practices
+
+When creating pull requests:
+
+1. **Use descriptive titles**: Follow conventional commit format
+   - `feat(azure): add accelerated networking support`
+   - `fix(aws): correct security group egress rules`
+   - `docs: update cost estimation guide`
+
+2. **Include comprehensive description**:
+   - Summary of changes
+   - Why changes were needed
+   - Impact assessment (cost, security, performance)
+   - Testing performed
+   - Documentation updates
+
+3. **Add appropriate labels**:
+   - `terraform` - Infrastructure changes
+   - `security` - Security-related changes
+   - `cost-optimization` - Cost impact changes
+   - `documentation` - Documentation only
+   - `breaking-change` - Breaking changes
+
+4. **Request reviews** when:
+   - Changes affect security configurations
+   - Modifications to shared modules
+   - Breaking changes or API modifications
+   - Complex autoscaling logic changes
+
 ## AI Assistant Guidance
 
 When working on this project:
 
 1. **Always read relevant documentation first**: Check QUICKSTART.md, SECURITY.md, and TESTING_GUIDE.md
-2. **Maintain security posture**: Never weaken security defaults without explicit user request and documentation
-3. **Consider costs**: Every change should be evaluated for cost impact
-4. **Test thoroughly**: Use patterns from TESTING_GUIDE.md for validation
-5. **Update documentation**: Changes must be reflected in all relevant docs
-6. **Follow multi-cloud patterns**: Keep Azure and AWS implementations consistent
-7. **Validate thoroughly**: Run `terraform fmt` and `terraform validate` on all changes
-8. **Think production-ready**: Every change should be production-grade, not a proof-of-concept
+2. **Create a feature branch**: Never commit directly to main/master
+3. **Maintain security posture**: Never weaken security defaults without explicit user request and documentation
+4. **Consider costs**: Every change should be evaluated for cost impact
+5. **Test thoroughly**: Use patterns from TESTING_GUIDE.md for validation
+6. **Update documentation**: Changes must be reflected in all relevant docs
+7. **Follow multi-cloud patterns**: Keep Azure and AWS implementations consistent
+8. **Validate thoroughly**: Run `terraform fmt` and `terraform validate` on all changes
+9. **Think production-ready**: Every change should be production-grade, not a proof-of-concept
+10. **Consider PR creation**: For significant changes, suggest creating a pull request for review
 
 ## Questions to Ask Before Coding
 
