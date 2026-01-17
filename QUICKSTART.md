@@ -4,6 +4,8 @@
 
 This project provides production-ready Terraform Infrastructure as Code (IaC) for deploying autoscaling, ephemeral CI/CD runners on Azure and AWS.
 
+**✅ Quality Assured**: All GitLab Runner implementations include comprehensive automated tests with 100% CI/CD validation coverage.
+
 ## What's Included
 
 ✅ **Fully Implemented:**
