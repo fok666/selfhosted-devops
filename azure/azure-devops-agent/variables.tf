@@ -95,17 +95,224 @@ variable "nsg_outbound_internet_access" {
   default     = true
 }
 
-# Networking
+variable "nsg_outbound_protocol" {
+  description = <<-EOT
+    Protocol for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Security Best Practice: Use "Tcp" for HTTPS-only (port 443)
+    Compatibility: Use "*" if your CI/CD requires multiple protocols
+    
+    Common values:
+    - "Tcp": TCP only (RECOMMENDED - secure, covers HTTPS)
+    - "*": All protocols (use only if required by your CI/CD workflow)
+    
+    Default: "Tcp" (secure by default, HTTPS-only)
+  EOT
+  type        = string
+  default     = "Tcp"
+
+  validation {
+    condition     = contains(["Tcp", "Udp", "Icmp", "*"], var.nsg_outbound_protocol)
+    error_message = "nsg_outbound_protocol must be one of: Tcp, Udp, Icmp, *"
+  }
+}
+
+variable "nsg_outbound_destination_port_range" {
+  description = <<-EOT
+    Destination port range for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Security Best Practice: Use "443" for HTTPS-only
+    Compatibility: Use "*" if your CI/CD requires multiple ports
+    
+    Common values:
+    - "443": HTTPS only (RECOMMENDED - secure, covers most CI/CD)
+    - "80,443": HTTP and HTTPS
+    - "*": All ports (use only if required by your CI/CD workflow)
+    
+    Default: "443" (secure by default, HTTPS-only)
+  EOT
+  type        = string
+  default     = "443"
+}
+
+variable "nsg_outbound_destination_address_prefix" {
+  description = <<-EOT
+    Destination address prefix for default NSG outbound rule - USE WITH UNDERSTANDING.
+    
+    Default "Internet" allows outbound to any internet address, required for:
+    - Connecting to Azure DevOps (dev.azure.com)
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    
+    Security Considerations:
+    - "Internet": All internet addresses (RECOMMENDED for CI/CD)
+    - Specific CIDR: Restrict to specific IP ranges (advanced, may break CI/CD)
+    - Service Tag: Use Azure Service Tags (e.g., "AzureDevOps")
+    
+    Default: "Internet" (required for typical CI/CD)
+  EOT
+  type        = string
+  default     = "Internet"
+}
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+
+# Network Creation Flags
+variable "create_vnet" {
+  description = <<-EOT
+    Create a new Virtual Network or use an existing one.
+    
+    - true: Create new VNet (default)
+    - false: Use existing VNet (specify existing_vnet_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_subnet" {
+  description = <<-EOT
+    Create a new Subnet or use an existing one.
+    
+    - true: Create new subnet (default)
+    - false: Use existing subnet (specify existing_subnet_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_nsg" {
+  description = <<-EOT
+    Create a new Network Security Group or use an existing one.
+    
+    - true: Create new NSG (default)
+    - false: Use existing NSG (specify existing_nsg_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_nsg_association" {
+  description = <<-EOT
+    Associate Network Security Group with Subnet.
+    
+    - true: Associate NSG with subnet (default)
+    - false: Skip association (useful if NSG is already associated)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+# New Network Configuration (when creating new resources)
 variable "vnet_address_space" {
-  description = "Address space for VNet"
+  description = "Address space for new VNet (only used when create_vnet = true)"
   type        = string
   default     = "10.0.0.0/16"
 }
 
 variable "subnet_address_prefix" {
-  description = "Address prefix for subnet"
+  description = "Address prefix for new subnet (only used when create_subnet = true)"
   type        = string
   default     = "10.0.1.0/24"
+}
+
+# Existing Network Configuration (when using existing resources)
+variable "existing_vnet_name" {
+  description = "Name of existing VNet (required when create_vnet = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_vnet || var.existing_vnet_name != ""
+    error_message = "existing_vnet_name must be provided when create_vnet is false"
+  }
+}
+
+variable "existing_vnet_resource_group_name" {
+  description = <<-EOT
+    Resource group name of existing VNet (optional, defaults to main resource group).
+    Use this when the VNet is in a different resource group.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "existing_subnet_name" {
+  description = "Name of existing subnet (required when create_subnet = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_subnet || var.existing_subnet_name != ""
+    error_message = "existing_subnet_name must be provided when create_subnet is false"
+  }
+}
+
+variable "existing_nsg_name" {
+  description = "Name of existing Network Security Group (required when create_nsg = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_nsg || var.existing_nsg_name != ""
+    error_message = "existing_nsg_name must be provided when create_nsg is false"
+  }
+}
+
+variable "existing_nsg_resource_group_name" {
+  description = <<-EOT
+    Resource group name of existing NSG (optional, defaults to main resource group).
+    Use this when the NSG is in a different resource group.
+  EOT
+  type        = string
+  default     = ""
+}
+
+# Additional NSG Rules
+variable "additional_nsg_rules" {
+  description = <<-EOT
+    Additional Network Security Group rules to create (only used when create_nsg = true).
+    
+    Example:
+    [
+      {
+        name                         = "allow-https"
+        priority                     = 200
+        direction                    = "Inbound"
+        access                       = "Allow"
+        protocol                     = "Tcp"
+        source_port_range            = "*"
+        destination_port_range       = "443"
+        source_address_prefix        = "*"
+        destination_address_prefix   = "*"
+        source_address_prefixes      = null
+        destination_address_prefixes = null
+      }
+    ]
+  EOT
+  type = list(object({
+    name                         = string
+    priority                     = number
+    direction                    = string
+    access                       = string
+    protocol                     = string
+    source_port_range            = string
+    destination_port_range       = string
+    source_address_prefix        = string
+    destination_address_prefix   = string
+    source_address_prefixes      = list(string)
+    destination_address_prefixes = list(string)
+  }))
+  default = []
 }
 
 # VM Configuration

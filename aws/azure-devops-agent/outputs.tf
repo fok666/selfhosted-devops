@@ -1,16 +1,16 @@
 output "vpc_id" {
   description = "VPC ID"
-  value       = aws_vpc.agent.id
+  value       = local.vpc_id
 }
 
 output "subnet_ids" {
   description = "Subnet IDs"
-  value       = aws_subnet.agent[*].id
+  value       = local.subnet_ids
 }
 
 output "security_group_id" {
   description = "Security group ID"
-  value       = aws_security_group.agent.id
+  value       = local.security_group_id
 }
 
 output "asg_name" {

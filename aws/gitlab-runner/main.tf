@@ -13,6 +13,10 @@ provider "aws" {
   region = var.aws_region
 }
 
+# =============================================================================
+# Locals Configuration
+# =============================================================================
+
 locals {
   runner_name = "${var.project_name}-gitlab-runner"
 
@@ -26,28 +30,16 @@ locals {
   })
 }
 
-# Get default VPC if not specified
-data "aws_vpc" "default" {
-  count   = var.vpc_id == "" ? 1 : 0
-  default = true
-}
+# =============================================================================
+# GitLab Runner ASG
+# =============================================================================
 
-# Get default subnets if not specified
-data "aws_subnets" "default" {
-  count = length(var.subnet_ids) == 0 ? 1 : 0
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default[0].id]
-  }
-}
-
-# Auto Scaling Group using shared module
 module "gitlab_runner_asg" {
   source = "../../modules/aws-asg"
 
   name_prefix         = local.runner_name
-  vpc_id              = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default[0].id
-  subnet_ids          = length(var.subnet_ids) > 0 ? var.subnet_ids : data.aws_subnets.default[0].ids
+  vpc_id              = local.vpc_id
+  subnet_ids          = local.subnet_ids
   instance_type       = var.instance_type
   use_spot_instances  = var.use_spot_instances
   spot_max_price      = var.spot_max_price

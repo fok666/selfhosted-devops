@@ -24,113 +24,9 @@ provider "aws" {
   }
 }
 
-# Data sources
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-# VPC
-resource "aws_vpc" "agent" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-vpc"
-    }
-  )
-}
-
-# Internet Gateway
-resource "aws_internet_gateway" "agent" {
-  vpc_id = aws_vpc.agent.id
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-igw"
-    }
-  )
-}
-
-# Subnets
-resource "aws_subnet" "agent" {
-  count = min(length(data.aws_availability_zones.available.names), 3)
-
-  vpc_id                  = aws_vpc.agent.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-subnet-${count.index + 1}"
-    }
-  )
-}
-
-# Route Table
-resource "aws_route_table" "agent" {
-  vpc_id = aws_vpc.agent.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.agent.id
-  }
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-rt"
-    }
-  )
-}
-
-# Route Table Association
-resource "aws_route_table_association" "agent" {
-  count = length(aws_subnet.agent)
-
-  subnet_id      = aws_subnet.agent[count.index].id
-  route_table_id = aws_route_table.agent.id
-}
-
-# Security Group
-resource "aws_security_group" "agent" {
-  name        = "${var.project_name}-agent-sg"
-  description = "Security group for Azure DevOps agents"
-  vpc_id      = aws_vpc.agent.id
-
-  # Allow outbound traffic (configurable, defaults to all traffic for Azure DevOps connectivity)
-  egress {
-    from_port   = var.egress_from_port
-    to_port     = var.egress_to_port
-    protocol    = var.egress_protocol
-    cidr_blocks = var.egress_cidr_blocks
-    description = "Allow outbound traffic to specified CIDR blocks"
-  }
-
-  # Optional SSH access (disabled by default for security)
-  dynamic "ingress" {
-    for_each = var.enable_ssh_access && length(var.ssh_cidr_blocks) > 0 ? [1] : []
-    content {
-      from_port   = 0
-      to_port     = 22
-      protocol    = "tcp"
-      cidr_blocks = var.ssh_cidr_blocks
-      description = "SSH access from specified CIDR blocks"
-    }
-  }
-
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-agent-sg"
-    }
-  )
-}
+# =============================================================================
+# IAM Configuration
+# =============================================================================
 
 # IAM Role for EC2 instances
 resource "aws_iam_role" "agent" {
@@ -172,7 +68,10 @@ resource "aws_iam_instance_profile" "agent" {
   tags = var.tags
 }
 
-# Prepare user data
+# =============================================================================
+# User Data Configuration
+# =============================================================================
+
 locals {
   user_data_rendered = templatefile("${path.module}/user-data.sh", {
     azp_url        = var.azp_url
@@ -183,13 +82,16 @@ locals {
   })
 }
 
+# =============================================================================
 # Azure DevOps Agent ASG
+# =============================================================================
+
 module "agent_asg" {
   source = "../../modules/aws-asg"
 
   name_prefix = "${var.project_name}-azdevops-agent"
-  vpc_id      = aws_vpc.agent.id
-  subnet_ids  = aws_subnet.agent[*].id
+  vpc_id      = local.vpc_id
+  subnet_ids  = local.subnet_ids
 
   user_data    = base64encode(local.user_data_rendered)
   docker_image = "fok666/azuredevops:latest"

@@ -281,6 +281,54 @@ See implementation-specific `variables.tf` files for comprehensive documentation
 - Security considerations
 - Recommended values for different scenarios
 
+## Testing
+
+This project uses **Terraform's native testing framework** for validation without requiring cloud resources.
+
+### Quick Test Commands
+
+```bash
+# Test specific module
+cd modules/aws-asg
+terraform init -backend=false
+terraform test
+
+# Test specific configuration
+cd azure/gitlab-runner
+terraform init -backend=false
+terraform test
+
+# Run all tests
+./scripts/run-tests.sh
+```
+
+### What's Tested
+
+✅ **Security Defaults** - SSH disabled, IMDSv2 enabled, encryption on
+✅ **Variable Validation** - Required variables, constraints, invalid values
+✅ **Cost Optimization** - Spot instances, scale-to-zero, disk sizing
+✅ **Autoscaling** - Min/max limits, thresholds, cooldown periods
+✅ **Network Isolation** - Security groups, private subnets, NSG rules
+✅ **High Availability** - Multi-AZ, instance distribution, health checks
+
+### Test Coverage
+
+| Component | Unit Tests | Integration Tests | Status |
+|-----------|------------|-------------------|--------|
+| AWS ASG Module | ✅ | N/A | Covered |
+| Azure VMSS Module | ✅ | N/A | Covered |
+| AWS GitLab Runner | N/A | ✅ | Covered |
+| Azure GitLab Runner | N/A | ✅ | Covered |
+| Other Runners | ⚠️ | ⚠️ | Pending |
+
+**CI/CD Integration**: Tests run automatically on every push and pull request via GitHub Actions.
+
+**Documentation**: See [docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md) for comprehensive testing guide including:
+- Writing new tests
+- Testing best practices
+- Troubleshooting common issues
+- Advanced testing patterns
+
 ## Monitoring & Logs
 
 - Cloud-native monitoring (Azure Monitor / CloudWatch)
