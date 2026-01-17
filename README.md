@@ -24,6 +24,16 @@ Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI
 ✅ **Multi-Cloud** - Identical configurations for Azure and AWS  
 ✅ **Cost/Performance Documentation** - Clear tradeoffs for every configuration option
 
+📐 **See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture diagrams and explanations.**
+
+## Documentation
+
+- 📐 **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture diagrams and explanations with Mermaid diagrams
+- 🚀 **[QUICKSTART.md](QUICKSTART.md)** - Quick deployment guide with examples
+- 🔒 **[SECURITY.md](SECURITY.md)** - Security best practices and default configurations
+- 🧪 **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Manual testing procedures and validation
+- ⚙️ **[docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md)** - Automated test framework documentation
+
 ## Project Structure
 
 ```
@@ -39,6 +49,8 @@ Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI
 ├── modules/                    # Shared Terraform modules
 │   ├── azure-vmss/            # Azure VMSS module
 │   └── aws-asg/               # AWS Auto Scaling Group module
+├── docs/                       # Documentation
+│   └── TERRAFORM_TESTING.md   # Test framework guide
 └── examples/                   # Usage examples and configurations
 ```
 
