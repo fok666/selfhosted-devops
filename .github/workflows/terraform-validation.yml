@@ -129,7 +129,7 @@ jobs:
           script: |
             const output = `#### Terraform Test Results for \`${{ matrix.name }}\`
             
-            **Status:** ${{ steps.test.outputs.test_status == 'passed' ? '✅ Passed' : '⚠️ Skipped' }}
+            **Status:** ${{ steps.test.outputs.test_status == 'passed' && '✅ Passed' || '⚠️ Skipped' }}
             
             <details>
             <summary>Test Details</summary>
