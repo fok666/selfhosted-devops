@@ -712,7 +712,7 @@ git push -u origin feature/add-spot-diversification
 
 ### Pull Request Creation
 
-**OPTIONAL**: Create GitHub Pull Requests when:
+**REQUIRED**: Create GitHub Pull Requests when:
 - ✅ Changes are significant or affect multiple files
 - ✅ Changes modify security configurations
 - ✅ Changes impact cost or performance characteristics
