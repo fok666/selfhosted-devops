@@ -150,14 +150,16 @@ variable "map_public_ip_on_launch" {
   description = <<-EOT
     Assign public IPs to instances launched in subnets.
     
-    Security Considerations:
-    - true: Instances get public IPs (easier connectivity, less secure)
-    - false: Instances have private IPs only (more secure, requires NAT)
+    ⚠️ Security Impact:
+    - true: Public subnet + public IPs (increased attack surface)
+    - false: Private subnet (requires NAT for internet access)
     
-    Default: true (for easier setup, but consider NAT Gateway for production)
+    Default: false (secure by default, align with security-first principle)
+    
+    Note: If false, you must configure NAT Gateway for outbound internet access.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 # Existing Network Configuration (when using existing resources)

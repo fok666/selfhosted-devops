@@ -19,26 +19,26 @@ variable "create_vpc" {
   description = <<-EOT
     Create a new VPC or use an existing one.
     
-    - true: Create new VPC
+    - true: Create new VPC (isolated network, production-ready)
     - false: Use existing VPC (specify existing_vpc_id) or default VPC
     
-    Default: false (uses existing/default VPC for simplicity)
+    Default: true (consistent with Azure pattern, provides network isolation)
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "create_subnets" {
   description = <<-EOT
     Create new Subnets or use existing ones.
     
-    - true: Create new subnets
+    - true: Create new subnets (isolated subnets, production-ready)
     - false: Use existing subnets (specify existing_subnet_ids) or default subnets
     
-    Default: false (uses existing/default subnets for simplicity)
+    Default: true (consistent with Azure pattern, provides subnet isolation)
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "create_internet_gateway" {
@@ -102,14 +102,16 @@ variable "map_public_ip_on_launch" {
   description = <<-EOT
     Assign public IPs to instances launched in subnets.
     
-    Security Considerations:
-    - true: Instances get public IPs (easier connectivity, less secure)
-    - false: Instances have private IPs only (more secure, requires NAT)
+    ⚠️ Security Impact:
+    - true: Public subnet + public IPs (increased attack surface)
+    - false: Private subnet (requires NAT for internet access)
     
-    Default: true (for easier setup, but consider NAT Gateway for production)
+    Default: false (secure by default, align with security-first principle)
+    
+    Note: If false, you must configure NAT Gateway for outbound internet access.
   EOT
   type        = bool
-  default     = true
+  default     = false
 }
 
 # Existing Network Configuration (when using existing resources)
