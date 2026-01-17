@@ -73,7 +73,20 @@ variable "user_data" {
 }
 
 variable "runner_count_per_instance" {
-  description = "Number of runners per instance (0 = auto-detect based on vCPU count)"
+  description = <<-EOT
+    Number of runners per EC2 instance. Set to 0 for auto-detection based on vCPU count.
+    
+    **Resource Allocation:**
+    - 0 = Auto-detect (recommended): Uses number of vCPUs
+    - 1 = Dedicated: One runner with full instance resources
+    - 2+ = Shared: Multiple runners sharing instance resources
+    
+    **Cost/Performance Tradeoff:**
+    - Higher count = Better instance utilization = Lower cost per runner
+    - Lower count = More resources per runner = Better performance
+    
+    **Default:** 0 (auto-detect based on vCPU count)
+  EOT
   type        = number
   default     = 0
 }

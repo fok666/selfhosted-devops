@@ -83,11 +83,11 @@ max_instances         = 2
 default_instances     = 1
 
 # Defaults (can be omitted, shown for reference)
-# vm_sku              = "Standard_D2s_v3"
-# os_disk_size_gb     = 64
-# os_disk_type        = "StandardSSD_LRS"
-# instance_count_per_vm = 0  # Auto-detect
-# vnet_address_space  = "10.0.0.0/16"
+# vm_sku                    = "Standard_D2s_v3"
+# os_disk_size_gb           = 64
+# os_disk_type              = "StandardSSD_LRS"
+# runner_count_per_instance = 0  # Auto-detect
+# vnet_address_space        = "10.0.0.0/16"
 EOF
 
 # Deploy
@@ -468,7 +468,7 @@ jobs:
 **To improve build speed:**
 - Increase disk size for better caching
 - Use compute-optimized VMs (F-series)
-- Set instance_count_per_vm = 1 for dedicated resources
+- Set runner_count_per_instance = 1 for dedicated resources
 
 ## Troubleshooting Test Failures
 

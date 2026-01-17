@@ -24,7 +24,7 @@ locals {
     gitlab_url          = var.gitlab_url
     gitlab_token        = var.gitlab_token
     runner_tags         = var.runner_tags
-    runner_count        = var.instance_count_per_vm
+    runner_count        = var.runner_count_per_instance
     docker_image        = var.docker_image
     runner_docker_image = "fok666/gitlab-runner:latest"
   })
@@ -127,7 +127,7 @@ module "gitlab_runner_vmss" {
   subnet_id           = azurerm_subnet.runner.id
   os_disk_size_gb     = var.os_disk_size_gb
   os_disk_type        = var.os_disk_type
-  
+
   source_image_reference = var.source_image_reference
 
   tags = var.tags

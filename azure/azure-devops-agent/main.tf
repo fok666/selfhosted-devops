@@ -106,13 +106,13 @@ resource "azurerm_subnet_network_security_group_association" "agent" {
 # Prepare cloud-init data
 locals {
   agent_name = "${var.project_name}-azdevops-agent"
-  
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml", {
     azp_url        = var.azp_url
     azp_token      = var.azp_token
     azp_pool       = var.azp_pool
     azp_agent_name = var.azp_agent_name_prefix
-    agent_count    = var.instance_count_per_vm
+    agent_count    = var.runner_count_per_instance
   })
 }
 
@@ -137,7 +137,7 @@ module "agent_vmss" {
   use_spot_instances = var.use_spot_instances
   spot_max_price     = var.spot_max_price
   zones              = var.zones
-  
+
   os_disk_size_gb = var.os_disk_size_gb
   os_disk_type    = var.os_disk_type
 

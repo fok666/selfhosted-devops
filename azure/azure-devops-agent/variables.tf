@@ -35,9 +35,9 @@ variable "azp_agent_name_prefix" {
   default     = "azure-agent"
 }
 
-variable "instance_count_per_vm" {
+variable "runner_count_per_instance" {
   description = <<-EOT
-    Number of Azure DevOps agents per VM (0 = auto-detect based on vCPU count).
+    Number of Azure DevOps agents per VM/instance (0 = auto-detect based on vCPU count).
     
     Cost/Performance Tradeoff:
     - Lower values (1-2): More stable, easier to manage, better isolation
