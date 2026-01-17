@@ -71,14 +71,23 @@ cd azure/gitlab-runner  # or any implementation
 
 # Create test tfvars
 cat > terraform.tfvars << EOF
-project_name       = "test-runner"
-location           = "East US"
-gitlab_url         = "https://gitlab.com"
-gitlab_token       = "$GITLAB_TEST_TOKEN"
-use_spot_instances = true
-min_instances      = 0
-max_instances      = 2
-default_instances  = 1
+project_name          = "test-runner"
+location              = "East US"
+gitlab_url            = "https://gitlab.com"
+gitlab_token          = "$GITLAB_TEST_TOKEN"
+
+# Use defaults optimized for cost
+use_spot_instances    = true
+min_instances         = 0
+max_instances         = 2
+default_instances     = 1
+
+# Defaults (can be omitted, shown for reference)
+# vm_sku              = "Standard_D2s_v3"
+# os_disk_size_gb     = 64
+# os_disk_type        = "StandardSSD_LRS"
+# instance_count_per_vm = 0  # Auto-detect
+# vnet_address_space  = "10.0.0.0/16"
 EOF
 
 # Deploy
@@ -439,13 +448,27 @@ jobs:
 
 ### Expected Performance Metrics
 
-| Metric | Target | Warning | Critical |
-|--------|--------|---------|----------|
-| Startup Time | <180s | 180-300s | >300s |
-| Scale Up Response | <5min | 5-10min | >10min |
-| Scale Down Response | <15min | 15-25min | >25min |
-| Job Queue Time | <60s | 60-180s | >180s |
-| Spot Interruption Recovery | <5min | 5-10min | >10min |
+| Metric | Target | Warning | Critical | Notes |
+|--------|--------|---------|----------|-------|
+| Startup Time | <180s | 180-300s | >300s | From scale-up to job start |
+| Scale Up Response | <5min | 5-10min | >10min | VM provision + runner registration |
+| Scale Down Response | <15min | 15-25min | >25min | After jobs complete |
+| Job Queue Time | <60s | 60-180s | >180s | With available capacity |
+| Spot Interruption Recovery | <5min | 5-10min | >10min | Auto-replacement time |
+| Disk I/O (StandardSSD) | 500 IOPS | 300-500 | <300 | 64GB disk baseline |
+| Disk I/O (Premium) | 120 IOPS/GB | 80-120 | <80 | Performance tier |
+
+### Performance Tuning Options
+
+**To improve startup time:**
+- Use Premium_LRS disks (+2-3x IOPS, +$5/mo)
+- Pre-warm instances (set min_instances > 0)
+- Use larger VM sizes for faster provisioning
+
+**To improve build speed:**
+- Increase disk size for better caching
+- Use compute-optimized VMs (F-series)
+- Set instance_count_per_vm = 1 for dedicated resources
 
 ## Troubleshooting Test Failures
 
