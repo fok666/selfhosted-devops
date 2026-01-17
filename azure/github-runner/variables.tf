@@ -148,17 +148,164 @@ variable "docker_image" {
   default     = "fok666/github-runner:latest"
 }
 
-# Networking
+# =============================================================================
+# Network Configuration
+# =============================================================================
+
+# Network Creation Flags
+variable "create_vnet" {
+  description = <<-EOT
+    Create a new Virtual Network or use an existing one.
+    
+    - true: Create new VNet (default)
+    - false: Use existing VNet (specify existing_vnet_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_subnet" {
+  description = <<-EOT
+    Create a new Subnet or use an existing one.
+    
+    - true: Create new subnet (default)
+    - false: Use existing subnet (specify existing_subnet_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_nsg" {
+  description = <<-EOT
+    Create a new Network Security Group or use an existing one.
+    
+    - true: Create new NSG (default)
+    - false: Use existing NSG (specify existing_nsg_name)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "create_nsg_association" {
+  description = <<-EOT
+    Associate Network Security Group with Subnet.
+    
+    - true: Associate NSG with subnet (default)
+    - false: Skip association (useful if NSG is already associated)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+# New Network Configuration (when creating new resources)
 variable "vnet_address_space" {
-  description = "Address space for VNet (CIDR notation)"
+  description = "Address space for new VNet (only used when create_vnet = true, CIDR notation)"
   type        = string
   default     = "10.0.0.0/16"
 }
 
 variable "subnet_address_prefix" {
-  description = "Address prefix for subnet (CIDR notation)"
+  description = "Address prefix for new subnet (only used when create_subnet = true, CIDR notation)"
   type        = string
   default     = "10.0.1.0/24"
+}
+
+# Existing Network Configuration (when using existing resources)
+variable "existing_vnet_name" {
+  description = "Name of existing VNet (required when create_vnet = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_vnet || var.existing_vnet_name != ""
+    error_message = "existing_vnet_name must be provided when create_vnet is false"
+  }
+}
+
+variable "existing_vnet_resource_group_name" {
+  description = <<-EOT
+    Resource group name of existing VNet (optional, defaults to main resource group).
+    Use this when the VNet is in a different resource group.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "existing_subnet_name" {
+  description = "Name of existing subnet (required when create_subnet = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_subnet || var.existing_subnet_name != ""
+    error_message = "existing_subnet_name must be provided when create_subnet is false"
+  }
+}
+
+variable "existing_nsg_name" {
+  description = "Name of existing Network Security Group (required when create_nsg = false)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.create_nsg || var.existing_nsg_name != ""
+    error_message = "existing_nsg_name must be provided when create_nsg is false"
+  }
+}
+
+variable "existing_nsg_resource_group_name" {
+  description = <<-EOT
+    Resource group name of existing NSG (optional, defaults to main resource group).
+    Use this when the NSG is in a different resource group.
+  EOT
+  type        = string
+  default     = ""
+}
+
+# Additional NSG Rules
+variable "additional_nsg_rules" {
+  description = <<-EOT
+    Additional Network Security Group rules to create (only used when create_nsg = true).
+    
+    Example:
+    [
+      {
+        name                         = "allow-https"
+        priority                     = 200
+        direction                    = "Inbound"
+        access                       = "Allow"
+        protocol                     = "Tcp"
+        source_port_range            = "*"
+        destination_port_range       = "443"
+        source_address_prefix        = "*"
+        destination_address_prefix   = "*"
+        source_address_prefixes      = null
+        destination_address_prefixes = null
+      }
+    ]
+  EOT
+  type = list(object({
+    name                         = string
+    priority                     = number
+    direction                    = string
+    access                       = string
+    protocol                     = string
+    source_port_range            = string
+    destination_port_range       = string
+    source_address_prefix        = string
+    destination_address_prefix   = string
+    source_address_prefixes      = list(string)
+    destination_address_prefixes = list(string)
+  }))
+  default = []
 }
 
 # OS and Disk Configuration

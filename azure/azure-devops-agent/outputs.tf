@@ -20,17 +20,17 @@ output "vmss_principal_id" {
 
 output "vnet_id" {
   description = "Virtual network ID"
-  value       = azurerm_virtual_network.agent.id
+  value       = local.vnet_id
 }
 
 output "subnet_id" {
   description = "Subnet ID"
-  value       = azurerm_subnet.agent.id
+  value       = local.subnet_id
 }
 
 output "nsg_id" {
   description = "Network security group ID"
-  value       = azurerm_network_security_group.agent.id
+  value       = local.nsg_id
 }
 
 output "ssh_private_key" {

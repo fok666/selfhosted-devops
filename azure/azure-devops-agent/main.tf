@@ -17,13 +17,10 @@ provider "azurerm" {
   features {}
 }
 
-# Generate SSH key pair
-resource "tls_private_key" "agent" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
+# =============================================================================
+# Resource Group
+# =============================================================================
 
-# Resource group
 resource "azurerm_resource_group" "agent" {
   name     = "${var.project_name}-rg"
   location = var.location
@@ -38,75 +35,22 @@ resource "azurerm_resource_group" "agent" {
   )
 }
 
-# Virtual network
-resource "azurerm_virtual_network" "agent" {
-  name                = "${var.project_name}-vnet"
-  address_space       = [var.vnet_address_space]
-  location            = azurerm_resource_group.agent.location
-  resource_group_name = azurerm_resource_group.agent.name
+# =============================================================================
+# SSH Key Generation
+# =============================================================================
 
-  tags = var.tags
+resource "tls_private_key" "agent" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
 }
 
-# Subnet
-resource "azurerm_subnet" "agent" {
-  name                 = "${var.project_name}-subnet"
-  resource_group_name  = azurerm_resource_group.agent.name
-  virtual_network_name = azurerm_virtual_network.agent.name
-  address_prefixes     = [var.subnet_address_prefix]
-}
+# =============================================================================
+# Cloud-Init Configuration
+# =============================================================================
 
-# Network Security Group
-resource "azurerm_network_security_group" "agent" {
-  name                = "${var.project_name}-nsg"
-  location            = azurerm_resource_group.agent.location
-  resource_group_name = azurerm_resource_group.agent.name
-
-  # Allow outbound internet access (configurable, defaults to enabled for Azure DevOps connectivity)
-  dynamic "security_rule" {
-    for_each = var.nsg_outbound_internet_access ? [1] : []
-    content {
-      name                       = "allow-https-outbound-internet"
-      priority                   = 100
-      direction                  = "Outbound"
-      access                     = "Allow"
-      protocol                   = "*"
-      source_port_range          = "*"
-      destination_port_range     = "*"
-      source_address_prefix      = "*"
-      destination_address_prefix = "Internet"
-    }
-  }
-
-  # Optional SSH access (disabled by default for security)
-  dynamic "security_rule" {
-    for_each = var.enable_ssh_access && length(var.ssh_source_address_prefixes) > 0 ? [1] : []
-    content {
-      name                       = "allow-ssh"
-      priority                   = 1001
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "Tcp"
-      source_port_range          = "*"
-      destination_port_range     = "22"
-      source_address_prefixes    = var.ssh_source_address_prefixes
-      destination_address_prefix = "*"
-    }
-  }
-
-  tags = var.tags
-}
-
-# Associate NSG with subnet
-resource "azurerm_subnet_network_security_group_association" "agent" {
-  subnet_id                 = azurerm_subnet.agent.id
-  network_security_group_id = azurerm_network_security_group.agent.id
-}
-
-# Prepare cloud-init data
 locals {
   agent_name = "${var.project_name}-azdevops-agent"
-  
+
   cloud_init = templatefile("${path.module}/cloud-init.yaml", {
     azp_url        = var.azp_url
     azp_token      = var.azp_token
@@ -116,7 +60,10 @@ locals {
   })
 }
 
+# =============================================================================
 # Azure DevOps Agent VMSS
+# =============================================================================
+
 module "agent_vmss" {
   source = "../../modules/azure-vmss"
 
@@ -124,7 +71,7 @@ module "agent_vmss" {
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
 
-  subnet_id      = azurerm_subnet.agent.id
+  subnet_id      = local.subnet_id
   ssh_public_key = tls_private_key.agent.public_key_openssh
 
   custom_data  = local.cloud_init
@@ -137,7 +84,7 @@ module "agent_vmss" {
   use_spot_instances = var.use_spot_instances
   spot_max_price     = var.spot_max_price
   zones              = var.zones
-  
+
   os_disk_size_gb = var.os_disk_size_gb
   os_disk_type    = var.os_disk_type
 
