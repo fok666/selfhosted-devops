@@ -304,12 +304,12 @@ terraform test
 
 ### What's Tested
 
-✅ **Security Defaults** - SSH disabled, IMDSv2 enabled, encryption on
-✅ **Variable Validation** - Required variables, constraints, invalid values
-✅ **Cost Optimization** - Spot instances, scale-to-zero, disk sizing
-✅ **Autoscaling** - Min/max limits, thresholds, cooldown periods
-✅ **Network Isolation** - Security groups, private subnets, NSG rules
-✅ **High Availability** - Multi-AZ, instance distribution, health checks
+- ✅ **Security Defaults** - SSH disabled, IMDSv2 enabled, encryption on
+- ✅ **Variable Validation** - Required variables, constraints, invalid values
+- ✅ **Cost Optimization** - Spot instances, scale-to-zero, disk sizing
+- ✅ **Autoscaling** - Min/max limits, thresholds, cooldown periods
+- ✅ **Network Isolation** - Security groups, private subnets, NSG rules
+- ✅ **High Availability** - Multi-AZ, instance distribution, health checks
 
 ### Test Coverage
 
