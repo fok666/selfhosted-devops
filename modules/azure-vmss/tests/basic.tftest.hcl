@@ -15,6 +15,7 @@ run "validate_required_inputs" {
     custom_data         = base64encode("#cloud-config\npackages:\n  - docker")
     docker_image        = "ubuntu:22.04"
     vm_sku              = "Standard_D2s_v3"
+    use_spot_instances  = false
     min_instances       = 0
     max_instances       = 5
     default_instances   = 1
@@ -96,10 +97,10 @@ run "validate_security_defaults" {
     error_message = "SSH key should be configured"
   }
 
-  # Verify managed identity is not used (module is low-level)
+  # Verify managed identity is configured
   assert {
-    condition     = length(azurerm_linux_virtual_machine_scale_set.vmss.identity) == 0
-    error_message = "Module should not configure identity (handled at higher level)"
+    condition     = length(azurerm_linux_virtual_machine_scale_set.vmss.identity) > 0 && azurerm_linux_virtual_machine_scale_set.vmss.identity[0].type == "SystemAssigned"
+    error_message = "Module should configure SystemAssigned identity"
   }
 
   # Verify disk configuration
@@ -117,7 +118,7 @@ run "validate_instance_configuration" {
     location                  = "eastus"
     resource_group_name       = "test-rg"
     subnet_id                 = "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/test-subnet"
-    ssh_public_key            = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDH+Vf2zYPMMosigz84uLIm5Cg9qx7tBmJMCQiGOJiVdEtoHtHHtDtlLbnL0vCJ5JsPUCeWYtFYXdplNtv0JDnRSA/J8wFZhZbMpboKOMsfbHU3GVfhcWGGfp6oYw9i3RG/VE3SmZGuwDl95jKHQRKANlOSsfcLibx8s1vEf/oOXvfNHoTSCK20rKzhOt+U+MTKVy8gr8Xu0cCOPLKOTcBpg8qEOY9Ffnety9wo3T2Iu0HJn2QWGy3awqULcYKQpR+pqgekejvdQY/GeoS4/oHR2KSY61WFhFSUbFOFUi9iaggCUmXjbefpKS9QuB77w4PScn0IMJcqQo/PGsVrRe3 test"
+    ssh_public_key            = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDH+Vf2zYPMMosigz84uLIm5Cg9qx7tBmJMCQiGOJiVdEtoHtHHtDtlLbnL0vCJ5JsPUCeWYtFYXdplNtv0JDdnRSA/J8wFZhZbMpboKOMsfbHU3GVfhcWGGfp6oYw9i3RG/VE3SmZGuwDl95jKHQRKANlOSsfcLibx8s1vEf/oOXvfNHoTSCK20rKzhOt+U+MTKVy8gr8Xu0cCOPLKOTcBpg8qEOY9Ffnety9wo3T2Iu0HJn2QWGy3awqULcYKQpR+pqgekejvdQY/GeoS4/oHR2KSY61WFhFSUbFOFUi9iaggCUmXjbefpKS9QuB77w4PScn0IMJcqQo/PGsVrRe3 test"
     custom_data               = base64encode("#cloud-config\npackages:\n  - docker")
     docker_image              = "ubuntu:22.04"
     vm_sku                    = "Standard_D2s_v3"
