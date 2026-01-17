@@ -722,7 +722,7 @@ git push -u origin feature/add-spot-diversification
 **Skip PR for**:
 - Minor documentation fixes (typos, formatting)
 - Local testing branches not intended for merge
-- Emergency hotfixes (but document thoroughly in commit)
+- Emergency hotfixes (must follow an expedited PR process)
 
 ```bash
 # After pushing branch, create PR using GitHub CLI (if available)
