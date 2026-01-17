@@ -24,7 +24,38 @@ enable_ssh_access           = true
 ssh_source_address_prefixes = ["10.0.0.0/8"]  # Replace with your specific IPs
 ```
 
-⚠️ **Security Warning**: Never use `0.0.0.0/0` or `*` for SSH access in production. The configuration includes validation to prevent this.
+**⚠️ Security Consequences of SSH Access:**
+
+When SSH is enabled with `0.0.0.0/0`:
+- ✗ CRITICAL SECURITY RISK - Never use in production!
+- ✗ Exposed to brute force attacks globally
+- ✗ High risk of credential stuffing attacks
+- ✗ Target for automated vulnerability scanners
+- ✗ Non-compliant with security frameworks
+- ✗ The configuration includes validation to prevent this
+
+When SSH is enabled with specific CIDR blocks:
+- ⚠️ Limited exposure to defined networks only
+- ⚠️ Still requires strong SSH key management
+- ⚠️ Consider VPN or bastion host instead
+- ⚠️ Ensure regular security patching
+- ⚠️ Monitor for failed login attempts
+
+When SSH is disabled (default):
+- ✓ No direct access attack vector
+- ✓ Forces use of secure alternatives (AWS Systems Manager, Azure Bastion)
+- ✓ Compliant with zero-trust security model
+- ✓ Better audit trail via session logging
+- ✓ No SSH key management overhead
+- ✓ Reduces attack surface significantly
+
+**Recommended Alternatives to SSH:**
+- **AWS**: Use AWS Systems Manager Session Manager
+  ```bash
+  aws ssm start-session --target <instance-id>
+  ```
+- **Azure**: Use Azure Bastion for secure browser-based access
+- **Both**: Deploy jump/bastion hosts in secured subnets
 
 #### Security Groups / Network Security Groups
 - **Egress**: Allows outbound internet access (required for CI/CD operations)
@@ -49,12 +80,31 @@ ssh_source_address_prefixes = ["10.0.0.0/8"]  # Replace with your specific IPs
 ### Instance Metadata Security
 
 #### AWS IMDSv2 (Instance Metadata Service v2)
-- **Default**: IMDSv2 **required** (`http_tokens = "required"`)
-- **Benefit**: Prevents SSRF attacks and unauthorized metadata access
-- **Configuration**: Can be made optional if legacy compatibility needed:
+- **Default**: IMDSv2 **required** (`enable_imdsv2 = true`)
+- **Benefit**: Prevents SSRF (Server-Side Request Forgery) attacks and unauthorized metadata access
+- **Configuration**: Available in all AWS implementations:
   ```hcl
-  enable_imdsv2 = false  # Not recommended
+  # aws/azure-devops-agent/terraform.tfvars
+  # aws/github-runner/terraform.tfvars
+  # aws/gitlab-runner/terraform.tfvars
+  enable_imdsv2 = false  # NOT RECOMMENDED - Use only for legacy compatibility
   ```
+
+**⚠️ Security Consequences of Disabling IMDSv2:**
+
+When `enable_imdsv2 = false`:
+- ✗ Instance metadata is accessible via simple HTTP GET requests
+- ✗ SSRF vulnerabilities in applications can be exploited to steal IAM credentials
+- ✗ No session authentication required for metadata access
+- ✗ Attackers can potentially pivot to other AWS resources using stolen credentials
+- ✗ Non-compliant with many security frameworks (CIS, NIST)
+
+When `enable_imdsv2 = true` (default):
+- ✓ Requires PUT request to obtain session token before accessing metadata
+- ✓ Session tokens have TTL (time-to-live) limiting exposure window
+- ✓ Protects against SSRF attacks via hop limits
+- ✓ Compliant with AWS security best practices
+- ✓ Meets requirements for SOC 2, ISO 27001, and similar frameworks
 
 #### Azure Instance Metadata
 - **Access**: Limited to instance only
@@ -78,12 +128,45 @@ ssh_source_address_prefixes = ["10.0.0.0/8"]  # Replace with your specific IPs
 
 #### Public IP Addresses
 - **AWS Default**: No public IPs assigned (`associate_public_ip_address = false`)
-- **Configuration**: Can be enabled if required:
+- **Configuration**: Available in all AWS implementations if needed:
   ```hcl
-  # In module call
-  associate_public_ip_address = true
+  # aws/azure-devops-agent/terraform.tfvars
+  # aws/github-runner/terraform.tfvars
+  # aws/gitlab-runner/terraform.tfvars
+  associate_public_ip_address = true  # USE WITH CAUTION
   ```
-- **Recommendation**: Use NAT Gateway or VPC endpoints instead
+
+**⚠️ Security Consequences of Public IP Addresses:**
+
+When `associate_public_ip_address = true`:
+- ✗ Instances are directly exposed to the internet
+- ✗ Increased attack surface for port scanning and brute force attacks
+- ✗ Higher risk of DDoS attacks
+- ✗ More difficult to implement centralized security controls
+- ✗ Harder to audit and monitor network traffic
+- ✗ Each instance becomes an independent internet endpoint
+
+When `associate_public_ip_address = false` (default):
+- ✓ Instances only accessible within VPC (defense in depth)
+- ✓ Reduced attack surface
+- ✓ Centralized outbound control via NAT Gateway
+- ✓ Easier to implement network security monitoring
+- ✓ Better compliance with network isolation requirements
+- ✓ Simplified network security group rules
+
+**Recommended Architecture for Internet Access:**
+Instead of public IPs, use:
+1. **NAT Gateway**: For outbound internet access from private subnets
+2. **VPC Endpoints**: For AWS service access without internet
+3. **AWS PrivateLink**: For accessing third-party SaaS securely
+
+Example with NAT Gateway:
+```hcl
+# Your runners get internet access via NAT Gateway
+# without being directly exposed
+associate_public_ip_address = false  # Secure default
+# Ensure your VPC has NAT Gateway configured
+```
 
 #### Private Subnets
 - **AWS**: Supports deployment in private subnets with NAT Gateway

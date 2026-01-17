@@ -126,13 +126,22 @@ variable "tags" {
 }
 
 variable "enable_imdsv2" {
-  description = "Enable IMDSv2 (recommended for security)"
+  description = <<-EOT
+    Enable IMDSv2 (Instance Metadata Service v2) - STRONGLY RECOMMENDED.
+    IMDSv2 requires session tokens for metadata access, protecting against SSRF attacks
+    and unauthorized credential theft. Setting to false should only be done for legacy
+    application compatibility. Default: true (secure)
+  EOT
   type        = bool
   default     = true
 }
 
 variable "associate_public_ip_address" {
-  description = "Associate public IP address to instances"
+  description = <<-EOT
+    Associate public IP addresses to instances - USE WITH CAUTION.
+    Public IPs expose instances directly to the internet. Consider using NAT Gateway
+    or VPC endpoints for internet access instead. Default: false (secure)
+  EOT
   type        = bool
   default     = false
 }

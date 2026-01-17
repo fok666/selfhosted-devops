@@ -105,6 +105,41 @@ variable "root_volume_type" {
   default     = "gp3"
 }
 
+# Security Configuration
+variable "enable_imdsv2" {
+  description = <<-EOT
+    Enable IMDSv2 (Instance Metadata Service version 2) - STRONGLY RECOMMENDED.
+    
+    IMDSv2 adds session-oriented security to prevent unauthorized access to instance metadata,
+    protecting against SSRF attacks and credential theft. Setting this to false increases
+    security risk and should only be done for legacy application compatibility.
+    
+    Security Impact:
+    - true (default): Requires session tokens for metadata access (secure)
+    - false: Allows open metadata access (vulnerable to SSRF attacks)
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "associate_public_ip_address" {
+  description = <<-EOT
+    Associate public IP addresses to instances - USE WITH CAUTION.
+    
+    Public IPs expose instances directly to the internet and increase attack surface.
+    Consider using NAT Gateway or VPC endpoints instead for outbound internet access.
+    
+    Security Impact:
+    - false (default): Instances only have private IPs (more secure)
+    - true: Instances get public IPs (increased exposure to internet threats)
+    
+    Note: Outbound internet access is required for CI/CD operations. If set to false,
+    ensure you have NAT Gateway configured in your VPC.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

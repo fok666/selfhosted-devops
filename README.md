@@ -85,6 +85,24 @@ All implementations support the following key parameters:
 - **Runner Count per VM** - Number of runners per VM (default: CPU count)
 - **Custom Scripts** - User data for additional configuration
 
+### Security Configuration
+
+**🔒 All implementations are secure by default:**
+
+- ❌ **SSH Access**: Disabled (can be enabled with specific IP restrictions)
+- ✅ **IMDSv2** (AWS): Required for metadata access (protects against SSRF attacks)
+- ❌ **Public IPs** (AWS): Not assigned (use NAT Gateway for internet access)
+- ✅ **Disk Encryption**: Enabled on all volumes
+- ✅ **Least Privilege IAM**: Minimal required permissions only
+
+**To customize security settings**, see [SECURITY.md](SECURITY.md) for detailed documentation including:
+- Security implications of each setting
+- When and why you might need to change defaults
+- Recommended alternatives for secure access
+- Compliance and audit considerations
+
+**Important**: Review [SECURITY.md](SECURITY.md) before changing any default security settings.
+
 ## Cost Optimization
 
 This infrastructure is designed for **maximum cost efficiency**:
@@ -113,10 +131,37 @@ This infrastructure is designed for **maximum cost efficiency**:
 
 ## Security Considerations
 
-- Runners execute in privileged mode (required for DinD)
-- Network security groups/security groups configured
-- Secrets stored in Key Vault/Secrets Manager (recommended)
-- IAM roles with least privilege
+**🔐 This infrastructure follows security-first principles with secure defaults.**
+
+### Key Security Features
+
+- **Minimal Attack Surface**: SSH disabled, no public IPs by default (AWS)
+- **Defense in Depth**: Network isolation, encryption, IAM/RBAC least privilege
+- **Secure Metadata Access**: IMDSv2 required on AWS to prevent SSRF attacks
+- **Secrets Management**: Sensitive variables marked, recommend external secret stores
+- **Audit & Compliance**: Monitoring enabled, compliance with security frameworks
+
+### Production Checklist
+
+Before deploying to production, review:
+- [ ] [SECURITY.md](SECURITY.md) - Comprehensive security documentation
+- [ ] Verify all security defaults are appropriate for your environment
+- [ ] Configure secret management (Key Vault, Secrets Manager, or Vault)
+- [ ] Enable monitoring and alerting
+- [ ] Review and test disaster recovery procedures
+
+**⚠️ Important**: Review security implications before changing any default settings. See [SECURITY.md](SECURITY.md) for detailed guidance.
+
+### Common Security Patterns
+
+```hcl
+# Secure production configuration (AWS)
+enable_ssh_access               = false  # Use AWS Systems Manager instead
+enable_imdsv2                   = true   # Required for security
+associate_public_ip_address     = false  # Use NAT Gateway
+```
+
+For detailed security documentation, attack scenarios, and mitigation strategies, see [SECURITY.md](SECURITY.md).
 
 ## Monitoring & Logs
 

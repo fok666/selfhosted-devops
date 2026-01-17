@@ -59,5 +59,10 @@ module "gitlab_runner_asg" {
   docker_image        = var.docker_image
   root_volume_size    = var.root_volume_size
   root_volume_type    = var.root_volume_type
-  tags                = var.tags
+
+  # Security configuration
+  enable_imdsv2               = var.enable_imdsv2
+  associate_public_ip_address = var.associate_public_ip_address
+
+  tags = var.tags
 }

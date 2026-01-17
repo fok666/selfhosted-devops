@@ -205,6 +205,10 @@ module "agent_asg" {
 
   enable_monitoring = true
 
+  # Security configuration
+  enable_imdsv2               = var.enable_imdsv2
+  associate_public_ip_address = var.associate_public_ip_address
+
   tags = merge(
     var.tags,
     {
