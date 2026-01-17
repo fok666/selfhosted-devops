@@ -286,7 +286,7 @@ resource "aws_security_group" "agent" {
 
 locals {
   # VPC ID
-  vpc_id = var.create_vpc ? aws_vpc.agent[0].id : var.existing_vpc_id
+  vpc_id = var.create_vpc ? aws_vpc.agent[0].id : data.aws_vpc.existing[0].id
 
   # Internet Gateway ID
   internet_gateway_id = var.create_internet_gateway ? aws_internet_gateway.agent[0].id : (
@@ -294,8 +294,8 @@ locals {
   )
 
   # Subnet IDs
-  subnet_ids = var.create_subnets ? aws_subnet.agent[*].id : var.existing_subnet_ids
+  subnet_ids = var.create_subnets ? aws_subnet.agent[*].id : data.aws_subnet.existing[*].id
 
   # Security Group ID
-  security_group_id = var.create_security_group ? aws_security_group.agent[0].id : var.existing_security_group_id
+  security_group_id = var.create_security_group ? aws_security_group.agent[0].id : data.aws_security_group.existing[0].id
 }

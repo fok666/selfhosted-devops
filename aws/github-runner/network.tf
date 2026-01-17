@@ -302,7 +302,7 @@ resource "aws_security_group" "runner" {
 locals {
   # VPC ID - priority: created > existing_vpc_id > vpc_id (deprecated) > default
   vpc_id = var.create_vpc ? aws_vpc.runner[0].id : (
-    var.existing_vpc_id != "" ? var.existing_vpc_id : (
+    var.existing_vpc_id != "" ? data.aws_vpc.existing[0].id : (
       var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default[0].id
     )
   )
@@ -314,11 +314,11 @@ locals {
 
   # Subnet IDs - priority: created > existing_subnet_ids > subnet_ids (deprecated) > default
   subnet_ids = var.create_subnets ? aws_subnet.runner[*].id : (
-    length(var.existing_subnet_ids) > 0 ? var.existing_subnet_ids : (
+    length(var.existing_subnet_ids) > 0 ? data.aws_subnet.existing[*].id : (
       length(var.subnet_ids) > 0 ? var.subnet_ids : data.aws_subnets.default[0].ids
     )
   )
 
   # Security Group ID
-  security_group_id = var.create_security_group ? aws_security_group.runner[0].id : var.existing_security_group_id
+  security_group_id = var.create_security_group ? aws_security_group.runner[0].id : data.aws_security_group.existing[0].id
 }
