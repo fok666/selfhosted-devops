@@ -153,6 +153,32 @@ variable "associate_public_ip_address" {
   default     = false
 }
 
+variable "egress_cidr_blocks" {
+  description = <<-EOT
+    CIDR blocks for outbound traffic from security group - USE WITH UNDERSTANDING.
+    Default ["0.0.0.0/0"] allows all outbound traffic, which is typically required for:
+    - Connecting to Azure DevOps (dev.azure.com)
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    - Accessing public APIs and services
+    
+    Security Considerations:
+    ✓ RECOMMENDED for most CI/CD use cases (default)
+    ⚠️ Restrict if you have strict egress filtering requirements
+    ⚠️ Use VPC endpoints for AWS services to keep traffic in AWS network
+    ⚠️ Consider using VPC Flow Logs for monitoring outbound traffic
+    
+    To restrict egress (advanced):
+    - Specify only required CIDR blocks (e.g., Azure DevOps IP ranges)
+    - Use VPC endpoints for AWS services (S3, ECR, etc.)
+    - May break Azure DevOps connectivity if misconfigured
+    
+    Default: ["0.0.0.0/0"] (allows all outbound - required for typical CI/CD)
+  EOT
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 # Tags
 variable "tags" {
   description = "Tags to apply to resources"

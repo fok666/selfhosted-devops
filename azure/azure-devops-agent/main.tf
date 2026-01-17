@@ -62,17 +62,20 @@ resource "azurerm_network_security_group" "agent" {
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
 
-  # Allow HTTPS outbound traffic (required for Azure DevOps)
-  security_rule {
-    name                       = "allow-https-outbound-internet"
-    priority                   = 100
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "*"
-    destination_address_prefix = "Internet"
+  # Allow outbound internet access (configurable, defaults to enabled for Azure DevOps connectivity)
+  dynamic "security_rule" {
+    for_each = var.nsg_outbound_internet_access ? [1] : []
+    content {
+      name                       = "allow-https-outbound-internet"
+      priority                   = 100
+      direction                  = "Outbound"
+      access                     = "Allow"
+      protocol                   = "*"
+      source_port_range          = "*"
+      destination_port_range     = "*"
+      source_address_prefix      = "*"
+      destination_address_prefix = "Internet"
+    }
   }
 
   # Optional SSH access (disabled by default for security)
@@ -102,12 +105,14 @@ resource "azurerm_subnet_network_security_group_association" "agent" {
 
 # Prepare cloud-init data
 locals {
-  cloud_init_rendered = templatefile("${path.module}/cloud-init.yaml", {
+  agent_name = "${var.project_name}-azdevops-agent"
+  
+  cloud_init = templatefile("${path.module}/cloud-init.yaml", {
     azp_url        = var.azp_url
     azp_token      = var.azp_token
     azp_pool       = var.azp_pool
     azp_agent_name = var.azp_agent_name_prefix
-    agent_count    = var.agent_count_per_vm
+    agent_count    = var.instance_count_per_vm
   })
 }
 
@@ -115,14 +120,14 @@ locals {
 module "agent_vmss" {
   source = "../../modules/azure-vmss"
 
-  vmss_name           = "${var.project_name}-azdevops-agent"
+  vmss_name           = local.agent_name
   location            = azurerm_resource_group.agent.location
   resource_group_name = azurerm_resource_group.agent.name
 
   subnet_id      = azurerm_subnet.agent.id
   ssh_public_key = tls_private_key.agent.public_key_openssh
 
-  custom_data  = base64encode(local.cloud_init_rendered)
+  custom_data  = local.cloud_init
   docker_image = "fok666/azuredevops:latest"
 
   vm_sku             = var.vm_sku
@@ -132,6 +137,11 @@ module "agent_vmss" {
   use_spot_instances = var.use_spot_instances
   spot_max_price     = var.spot_max_price
   zones              = var.zones
+  
+  os_disk_size_gb = var.os_disk_size_gb
+  os_disk_type    = var.os_disk_type
+
+  source_image_reference = var.source_image_reference
 
   tags = merge(
     var.tags,

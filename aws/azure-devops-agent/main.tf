@@ -103,13 +103,13 @@ resource "aws_security_group" "agent" {
   description = "Security group for Azure DevOps agents"
   vpc_id      = aws_vpc.agent.id
 
-  # Allow HTTPS outbound traffic (required for Azure DevOps)
+  # Allow outbound traffic (configurable, defaults to all traffic for Azure DevOps connectivity)
   egress {
     from_port   = 0
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow HTTPS outbound traffic"
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = var.egress_cidr_blocks
+    description = "Allow outbound traffic to specified CIDR blocks"
   }
 
   # Optional SSH access (disabled by default for security)

@@ -32,20 +32,20 @@ resource "aws_security_group" "runner" {
   description = "Security group for CI/CD runners"
   vpc_id      = var.vpc_id
 
-  # Allow outbound internet access (required for pulling Docker images, etc.)
+  # Allow outbound internet access (configurable, defaults to all traffic)
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
+    cidr_blocks = var.egress_cidr_blocks
+    description = "Allow outbound traffic to specified CIDR blocks"
   }
 
   # Optional SSH access
   dynamic "ingress" {
     for_each = length(var.ingress_cidr_blocks) > 0 ? [1] : []
     content {
-      from_port   = 22
+      from_port   = 0
       to_port     = 22
       protocol    = "tcp"
       cidr_blocks = var.ingress_cidr_blocks

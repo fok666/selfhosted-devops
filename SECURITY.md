@@ -58,9 +58,63 @@ When SSH is disabled (default):
 - **Both**: Deploy jump/bastion hosts in secured subnets
 
 #### Security Groups / Network Security Groups
-- **Egress**: Allows outbound internet access (required for CI/CD operations)
+- **Egress**: Configurable outbound internet access (defaults to all, required for CI/CD operations)
 - **Ingress**: No inbound access by default (except optional SSH with restrictions)
 - **Principle**: Deny by default, allow only what's necessary
+
+##### Egress Traffic Control (Outbound)
+- **Default**: All outbound traffic allowed (`egress_cidr_blocks = ["0.0.0.0/0"]`)
+- **Configuration**: Available in AWS implementations for advanced security:
+  ```hcl
+  # Restrict outbound traffic to specific destinations (advanced use case)
+  egress_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12"]
+  ```
+
+**⚠️ Security Considerations for Egress Restrictions:**
+
+When `egress_cidr_blocks = ["0.0.0.0/0"]` (default):
+- ✓ RECOMMENDED for typical CI/CD operations
+- ✓ Allows pulling Docker images from public registries (Docker Hub, ghcr.io, etc.)
+- ✓ Allows downloading packages and dependencies (npm, pip, maven, etc.)
+- ✓ Allows connecting to CI/CD platforms (GitHub, GitLab, Azure DevOps)
+- ✓ Allows accessing public APIs and web services
+- ⚠️ Provides maximum flexibility but widest egress access
+- ⚠️ Monitor traffic using VPC Flow Logs / NSG Flow Logs
+
+When restricting `egress_cidr_blocks` (advanced):
+- ✓ Tighter security control over outbound connections
+- ✓ Prevents data exfiltration to unauthorized destinations
+- ✓ Compliant with zero-trust network architecture
+- ✓ Better for highly regulated environments
+- ✗ REQUIRES careful configuration - may break CI/CD functionality
+- ✗ Must whitelist all required destinations (registries, package repos, APIs)
+- ✗ Increased operational complexity
+- ✗ May need frequent updates as dependencies change
+
+**Recommended Approaches for Egress Security:**
+1. **Default Configuration (Most Common)**: Allow all egress, monitor with Flow Logs
+2. **VPC Endpoints (AWS)**: Use VPC endpoints for AWS services (S3, ECR, etc.)
+3. **Private Registries**: Host internal Docker/package registries
+4. **Egress Filtering (Advanced)**: Restrict to specific CIDR blocks + VPC endpoints
+5. **Proxy/Firewall**: Route through proxy for URL-based filtering
+
+Example configurations:
+```hcl
+# Option 1: Default - Allow all outbound (recommended for most use cases)
+egress_cidr_blocks = ["0.0.0.0/0"]
+
+# Option 2: Restrict to private networks only (requires VPC endpoints for internet services)
+egress_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+# Option 3: Specific IP ranges (e.g., corporate network + cloud provider IPs)
+egress_cidr_blocks = ["10.0.0.0/8", "52.0.0.0/8"]  # Example: Your VPC + AWS IP range
+```
+
+**⚠️ Important**: Restricting egress requires:
+- VPC endpoints for AWS services (S3, ECR, SSM, CloudWatch)
+- Internal mirrors for public package repositories
+- Proxy servers for external HTTP/HTTPS access
+- Careful testing to ensure CI/CD pipelines function correctly
 
 ### Encryption
 

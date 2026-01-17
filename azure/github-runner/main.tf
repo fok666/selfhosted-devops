@@ -24,7 +24,7 @@ locals {
     github_url          = var.github_url
     github_token        = var.github_token
     runner_labels       = var.runner_labels
-    runner_count        = var.runner_count_per_vm
+    runner_count        = var.instance_count_per_vm
     docker_image        = var.docker_image
     runner_docker_image = "fok666/github-runner:latest"
   })
@@ -40,7 +40,7 @@ resource "azurerm_resource_group" "runner" {
 # Virtual network
 resource "azurerm_virtual_network" "runner" {
   name                = "${var.project_name}-vnet"
-  address_space       = ["10.0.0.0/16"]
+  address_space       = [var.vnet_address_space]
   location            = azurerm_resource_group.runner.location
   resource_group_name = azurerm_resource_group.runner.name
   tags                = var.tags
@@ -51,7 +51,7 @@ resource "azurerm_subnet" "runner" {
   name                 = "${var.project_name}-subnet"
   resource_group_name  = azurerm_resource_group.runner.name
   virtual_network_name = azurerm_virtual_network.runner.name
-  address_prefixes     = ["10.0.1.0/24"]
+  address_prefixes     = [var.subnet_address_prefix]
 }
 
 # Network security group
@@ -60,17 +60,20 @@ resource "azurerm_network_security_group" "runner" {
   location            = azurerm_resource_group.runner.location
   resource_group_name = azurerm_resource_group.runner.name
 
-  # Allow outbound internet access
-  security_rule {
-    name                       = "AllowInternetOutbound"
-    priority                   = 100
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "Internet"
+  # Allow outbound internet access (configurable, defaults to enabled for CI/CD operations)
+  dynamic "security_rule" {
+    for_each = var.nsg_outbound_internet_access ? [1] : []
+    content {
+      name                       = "AllowInternetOutbound"
+      priority                   = 100
+      direction                  = "Outbound"
+      access                     = "Allow"
+      protocol                   = "*"
+      source_port_range          = "*"
+      destination_port_range     = "*"
+      source_address_prefix      = "*"
+      destination_address_prefix = "Internet"
+    }
   }
 
   # Optional SSH access (disabled by default for security)
@@ -117,18 +120,15 @@ module "github_runner_vmss" {
   min_instances       = var.min_instances
   max_instances       = var.max_instances
   default_instances   = var.default_instances
+  zones               = var.zones
   ssh_public_key      = tls_private_key.runner.public_key_openssh
   custom_data         = local.cloud_init
   docker_image        = var.docker_image
   subnet_id           = azurerm_subnet.runner.id
   os_disk_size_gb     = var.os_disk_size_gb
   os_disk_type        = var.os_disk_type
-  tags                = var.tags
+  
+  source_image_reference = var.source_image_reference
 
-  source_image_reference = {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
-    version   = "latest"
-  }
+  tags = var.tags
 }

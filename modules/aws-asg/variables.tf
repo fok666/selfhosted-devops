@@ -147,9 +147,42 @@ variable "associate_public_ip_address" {
 }
 
 variable "ingress_cidr_blocks" {
-  description = "CIDR blocks for SSH ingress"
+  description = <<-EOT
+    CIDR blocks for SSH ingress - ONLY USED IF KEY_NAME IS PROVIDED.
+    Leave empty to disable SSH access (recommended). If SSH is required,
+    specify restrictive CIDR blocks (e.g., your VPN or office IPs).
+    NEVER use ["0.0.0.0/0"] - this exposes instances to the entire internet.
+    Default: [] (secure - no SSH access)
+  EOT
   type        = list(string)
   default     = []
+}
+
+variable "egress_cidr_blocks" {
+  description = <<-EOT
+    CIDR blocks for outbound traffic - USE WITH UNDERSTANDING.
+    Default ["0.0.0.0/0"] allows all outbound traffic, which is typically required for:
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    - Connecting to CI/CD platforms (GitHub, GitLab, Azure DevOps)
+    - Accessing public APIs and services
+    
+    Security Considerations:
+    ✓ RECOMMENDED for most CI/CD use cases (default)
+    ⚠️ Restrict if you have strict egress filtering requirements
+    ⚠️ Use VPC endpoints for AWS services to keep traffic in AWS network
+    ⚠️ Consider using NAT Gateway logs for monitoring outbound traffic
+    
+    To restrict egress (advanced):
+    - Specify only required CIDR blocks (e.g., your private network ranges)
+    - Use VPC endpoints for AWS services (S3, ECR, etc.)
+    - Configure security groups for specific destination ports/protocols
+    - May break CI/CD functionality if misconfigured
+    
+    Default: ["0.0.0.0/0"] (allows all outbound - required for typical CI/CD)
+  EOT
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
 }
 
 variable "capacity_rebalance" {

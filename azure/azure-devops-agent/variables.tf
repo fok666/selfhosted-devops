@@ -35,8 +35,17 @@ variable "azp_agent_name_prefix" {
   default     = "azure-agent"
 }
 
-variable "agent_count_per_vm" {
-  description = "Number of Azure DevOps agents per VM (0 = auto-detect based on vCPU)"
+variable "instance_count_per_vm" {
+  description = <<-EOT
+    Number of Azure DevOps agents per VM (0 = auto-detect based on vCPU count).
+    
+    Cost/Performance Tradeoff:
+    - Lower values (1-2): More stable, easier to manage, better isolation
+    - Higher values (4+): Better resource utilization, lower cost per agent
+    - Auto (0): Optimal for varying workloads, matches vCPU count
+    
+    Default: 0 (auto-detect - balances cost and performance)
+  EOT
   type        = number
   default     = 0
 }
@@ -58,6 +67,34 @@ variable "ssh_source_address_prefixes" {
   }
 }
 
+variable "nsg_outbound_internet_access" {
+  description = <<-EOT
+    Allow outbound internet access from Network Security Group - USE WITH UNDERSTANDING.
+    
+    Default true allows outbound traffic, which is required for:
+    - Connecting to Azure DevOps (dev.azure.com)
+    - Pulling Docker images from public registries
+    - Downloading packages and dependencies
+    - Accessing public APIs and services
+    
+    Security Considerations:
+    ✓ RECOMMENDED for most CI/CD use cases (default: true)
+    ⚠️ Set to false only if you have alternative outbound connectivity (NAT Gateway, Azure Firewall)
+    ⚠️ Consider using NSG Flow Logs for monitoring outbound traffic
+    ⚠️ Use Azure Firewall or Network Virtual Appliance for URL-based filtering
+    
+    When false:
+    - No default outbound internet access
+    - Must configure NAT Gateway or Azure Firewall for outbound connectivity
+    - Will break Azure DevOps Agent functionality if not properly configured
+    - More secure but requires additional infrastructure
+    
+    Default: true (allows outbound internet - required for Azure DevOps)
+  EOT
+  type        = bool
+  default     = true
+}
+
 # Networking
 variable "vnet_address_space" {
   description = "Address space for VNet"
@@ -73,7 +110,17 @@ variable "subnet_address_prefix" {
 
 # VM Configuration
 variable "vm_sku" {
-  description = "Azure VM size"
+  description = <<-EOT
+    Azure VM size/SKU.
+    
+    Cost/Performance Tradeoffs:
+    - Standard_B2s: Lowest cost (~$30/mo), burstable CPU, good for light workloads
+    - Standard_D2s_v3: Balanced cost/performance (~$70/mo), consistent CPU (RECOMMENDED)
+    - Standard_D4s_v3: Higher performance (~$140/mo), 4 vCPUs, for compute-intensive jobs
+    - Standard_F4s_v2: Compute-optimized (~$150/mo), best CPU performance
+    
+    Default: Standard_D2s_v3 (balanced cost and consistent performance)
+  EOT
   type        = string
   default     = "Standard_D2s_v3"
 
@@ -84,7 +131,16 @@ variable "vm_sku" {
 }
 
 variable "use_spot_instances" {
-  description = "Use Azure Spot instances for cost savings"
+  description = <<-EOT
+    Use Azure Spot instances for significant cost savings (up to 90% discount).
+    
+    Cost/Reliability Tradeoff:
+    - true: 60-90% cost savings, but instances can be evicted with 30s notice
+    - false: Higher cost, guaranteed availability, predictable performance
+    
+    Recommendation: true for dev/test, false for critical production pipelines
+    Default: true (optimized for cost)
+  EOT
   type        = bool
   default     = true
 }
@@ -132,6 +188,68 @@ variable "default_instances" {
   validation {
     condition     = var.default_instances >= 0
     error_message = "Default instances must be >= 0"
+  }
+}
+
+# OS and Disk Configuration
+variable "source_image_reference" {
+  description = <<-EOT
+    Source image reference for VMs.
+    Default: Ubuntu 24.04 LTS (latest stable, long-term support until 2029)
+  EOT
+  type = object({
+    publisher = string
+    offer     = string
+    sku       = string
+    version   = string
+  })
+  default = {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+}
+
+variable "os_disk_size_gb" {
+  description = <<-EOT
+    OS disk size in GB.
+    
+    Cost/Performance Tradeoff:
+    - 64GB: Lowest cost, sufficient for most CI/CD workloads (RECOMMENDED)
+    - 128GB: Better for workloads with large Docker images/build artifacts
+    - 256GB+: For very large monorepos or extensive caching
+    
+    Note: Larger disks cost more (~$5-10/month per 64GB)
+    Default: 64 (optimized for cost while meeting typical needs)
+  EOT
+  type        = number
+  default     = 64
+
+  validation {
+    condition     = var.os_disk_size_gb >= 30 && var.os_disk_size_gb <= 4096
+    error_message = "OS disk size must be between 30 GB and 4096 GB"
+  }
+}
+
+variable "os_disk_type" {
+  description = <<-EOT
+    OS disk storage type.
+    
+    Cost/Performance Tradeoff:
+    - Standard_LRS: Lowest cost (~$2/mo for 64GB), HDD, slowest (not recommended)
+    - StandardSSD_LRS: Balanced cost (~$5/mo for 64GB), good performance (RECOMMENDED)
+    - Premium_LRS: Higher cost (~$10/mo for 64GB), best performance, SSD
+    - Premium_ZRS: Highest cost, zone-redundant, maximum durability
+    
+    Default: StandardSSD_LRS (best balance of cost, performance, and reliability)
+  EOT
+  type        = string
+  default     = "StandardSSD_LRS"
+
+  validation {
+    condition     = contains(["Standard_LRS", "StandardSSD_LRS", "Premium_LRS", "StandardSSD_ZRS", "Premium_ZRS"], var.os_disk_type)
+    error_message = "OS disk type must be one of: Standard_LRS, StandardSSD_LRS, Premium_LRS, StandardSSD_ZRS, Premium_ZRS"
   }
 }
 
