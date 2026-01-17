@@ -106,17 +106,17 @@ resource "aws_security_group" "agent" {
   # Allow all outbound traffic (required for Azure DevOps)
   egress {
     from_port   = 0
-    to_port     = 0
+    to_port     = 443
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow all outbound traffic"
+    description = "Allow HTTPS outbound traffic"
   }
 
   # Optional SSH access (disabled by default for security)
   dynamic "ingress" {
     for_each = var.enable_ssh_access && length(var.ssh_cidr_blocks) > 0 ? [1] : []
     content {
-      from_port   = 22
+      from_port   = 0
       to_port     = 22
       protocol    = "tcp"
       cidr_blocks = var.ssh_cidr_blocks
