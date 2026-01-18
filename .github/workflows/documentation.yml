@@ -68,7 +68,7 @@ jobs:
           echo "Checking for Mermaid diagram syntax..."
           
           # Check if any .md files contain mermaid blocks
-          if grep -r "```mermaid" . --include="*.md" > /dev/null; then
+          if grep -r '```mermaid' . --include="*.md" > /dev/null; then
             echo "✅ Found Mermaid diagrams"
             
             # Basic syntax check - look for common issues
@@ -79,8 +79,8 @@ jobs:
               mermaid_opens=$(grep -c '```mermaid' "$file" || true)
               code_closes=$(grep -c '```$' "$file" || true)
               
-              if [ $mermaid_opens -gt 0 ]; then
-                echo "  Checking $file: $mermaid_opens Mermaid diagram(s)"
+              if [ "$mermaid_opens" -gt 0 ]; then
+                echo "  Checking $file: $mermaid_opens Mermaid diagrams"
               fi
             done
             
