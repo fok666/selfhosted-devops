@@ -1,284 +1,8 @@
-# Security Best Practices
+# Security Configuration
 
-This document outlines the security features and best practices implemented in this infrastructure.
+## Default Security Posture
 
-## 🔒 Security Features
-
-### Network Security
-
-#### SSH Access (Disabled by Default)
-- **Default**: SSH access is **disabled** for all implementations
-- **Configuration**: Can be enabled with specific CIDR restrictions
-
-**AWS Implementations:**
-```hcl
-# Enable SSH only from specific IP ranges
-enable_ssh_access = true
-ssh_cidr_blocks   = ["10.0.0.0/8"]  # Replace with your specific IPs
-```
-
-**Azure Implementations:**
-```hcl
-# Enable SSH only from specific IP ranges
-enable_ssh_access           = true
-ssh_source_address_prefixes = ["10.0.0.0/8"]  # Replace with your specific IPs
-```
-
-**⚠️ Security Consequences of SSH Access:**
-
-When SSH is enabled with `0.0.0.0/0`:
-- ✗ CRITICAL SECURITY RISK - Never use in production!
-- ✗ Exposed to brute force attacks globally
-- ✗ High risk of credential stuffing attacks
-- ✗ Target for automated vulnerability scanners
-- ✗ Non-compliant with security frameworks
-- ✗ The configuration includes validation to prevent this
-
-When SSH is enabled with specific CIDR blocks:
-- ⚠️ Limited exposure to defined networks only
-- ⚠️ Still requires strong SSH key management
-- ⚠️ Consider VPN or bastion host instead
-- ⚠️ Ensure regular security patching
-- ⚠️ Monitor for failed login attempts
-
-When SSH is disabled (default):
-- ✓ No direct access attack vector
-- ✓ Forces use of secure alternatives (AWS Systems Manager, Azure Bastion)
-- ✓ Compliant with zero-trust security model
-- ✓ Better audit trail via session logging
-- ✓ No SSH key management overhead
-- ✓ Reduces attack surface significantly
-
-**Recommended Alternatives to SSH:**
-- **AWS**: Use AWS Systems Manager Session Manager
-  ```bash
-  aws ssm start-session --target <instance-id>
-  ```
-- **Azure**: Use Azure Bastion for secure browser-based access
-- **Both**: Deploy jump/bastion hosts in secured subnets
-
-#### Security Groups / Network Security Groups
-- **Egress**: Configurable outbound internet access (defaults to all, required for CI/CD operations)
-- **Ingress**: No inbound access by default (except optional SSH with restrictions)
-- **Principle**: Deny by default, allow only what's necessary
-
-##### Egress Traffic Control (Outbound)
-- **Default**: All outbound traffic allowed (`egress_cidr_blocks = ["0.0.0.0/0"]`)
-- **Configuration**: Available in AWS implementations for advanced security:
-  ```hcl
-  # Restrict outbound traffic to specific destinations (advanced use case)
-  egress_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12"]
-  ```
-
-**⚠️ Security Considerations for Egress Restrictions:**
-
-When `egress_cidr_blocks = ["0.0.0.0/0"]` (default):
-- ✓ RECOMMENDED for typical CI/CD operations
-- ✓ Allows pulling Docker images from public registries (Docker Hub, ghcr.io, etc.)
-- ✓ Allows downloading packages and dependencies (npm, pip, maven, etc.)
-- ✓ Allows connecting to CI/CD platforms (GitHub, GitLab, Azure DevOps)
-- ✓ Allows accessing public APIs and web services
-- ⚠️ Provides maximum flexibility but widest egress access
-- ⚠️ Monitor traffic using VPC Flow Logs / NSG Flow Logs
-
-When restricting `egress_cidr_blocks` (advanced):
-- ✓ Tighter security control over outbound connections
-- ✓ Prevents data exfiltration to unauthorized destinations
-- ✓ Compliant with zero-trust network architecture
-- ✓ Better for highly regulated environments
-- ✗ REQUIRES careful configuration - may break CI/CD functionality
-- ✗ Must whitelist all required destinations (registries, package repos, APIs)
-- ✗ Increased operational complexity
-- ✗ May need frequent updates as dependencies change
-
-**Recommended Approaches for Egress Security:**
-1. **Default Configuration (Most Common)**: Allow all egress, monitor with Flow Logs
-2. **VPC Endpoints (AWS)**: Use VPC endpoints for AWS services (S3, ECR, etc.)
-3. **Private Registries**: Host internal Docker/package registries
-4. **Egress Filtering (Advanced)**: Restrict to specific CIDR blocks + VPC endpoints
-5. **Proxy/Firewall**: Route through proxy for URL-based filtering
-
-Example configurations:
-```hcl
-# Option 1: Default - Allow all outbound (recommended for most use cases)
-egress_cidr_blocks = ["0.0.0.0/0"]
-
-# Option 2: Restrict to private networks only (requires VPC endpoints for internet services)
-egress_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
-
-# Option 3: Specific IP ranges (e.g., corporate network + cloud provider IPs)
-egress_cidr_blocks = ["10.0.0.0/8", "52.0.0.0/8"]  # Example: Your VPC + AWS IP range
-```
-
-**⚠️ Important**: Restricting egress requires:
-- VPC endpoints for AWS services (S3, ECR, SSM, CloudWatch)
-- Internal mirrors for public package repositories
-- Proxy servers for external HTTP/HTTPS access
-- Careful testing to ensure CI/CD pipelines function correctly
-
-### Encryption
-
-#### AWS
-- **EBS Volumes**: Encryption at rest enabled by default (`encrypted = true`)
-- **Type**: Uses AWS-managed keys by default
-- **Custom KMS**: Can be configured via launch template if needed
-
-#### Azure
-- **Managed Disks**: Platform-managed encryption enabled by default
-- **Customer-Managed Keys**: Can be configured via optional parameters:
-  ```hcl
-  disk_encryption_set_id                = azurerm_disk_encryption_set.example.id
-  secure_vm_disk_encryption_set_id     = azurerm_disk_encryption_set.secure.id
-  ```
-
-### Instance Metadata Security
-
-#### AWS IMDSv2 (Instance Metadata Service v2)
-- **Default**: IMDSv2 **required** (`enable_imdsv2 = true`)
-- **Benefit**: Prevents SSRF (Server-Side Request Forgery) attacks and unauthorized metadata access
-- **Configuration**: Available in all AWS implementations:
-  ```hcl
-  # aws/azure-devops-agent/terraform.tfvars
-  # aws/github-runner/terraform.tfvars
-  # aws/gitlab-runner/terraform.tfvars
-  enable_imdsv2 = false  # NOT RECOMMENDED - Use only for legacy compatibility
-  ```
-
-**⚠️ Security Consequences of Disabling IMDSv2:**
-
-When `enable_imdsv2 = false`:
-- ✗ Instance metadata is accessible via simple HTTP GET requests
-- ✗ SSRF vulnerabilities in applications can be exploited to steal IAM credentials
-- ✗ No session authentication required for metadata access
-- ✗ Attackers can potentially pivot to other AWS resources using stolen credentials
-- ✗ Non-compliant with many security frameworks (CIS, NIST)
-
-When `enable_imdsv2 = true` (default):
-- ✓ Requires PUT request to obtain session token before accessing metadata
-- ✓ Session tokens have TTL (time-to-live) limiting exposure window
-- ✓ Protects against SSRF attacks via hop limits
-- ✓ Compliant with AWS security best practices
-- ✓ Meets requirements for SOC 2, ISO 27001, and similar frameworks
-
-#### Azure Instance Metadata
-- **Access**: Limited to instance only
-- **Authentication**: Uses system-assigned managed identity where applicable
-
-### IAM / Identity Management
-
-#### AWS IAM Roles
-- **Principle of Least Privilege**: Roles include only necessary permissions
-- **Included Policies**:
-  - `AmazonSSMManagedInstanceCore` - For Systems Manager access (no SSH needed)
-  - `CloudWatchAgentServerPolicy` - For logging and monitoring
-- **No**: Overly permissive policies like `AdministratorAccess`
-
-#### Azure Managed Identity
-- **Type**: System-assigned managed identity enabled
-- **Scope**: Limited to necessary Azure resources
-- **No**: Service principal credentials stored on VMs
-
-### Network Isolation
-
-#### Public IP Addresses
-- **AWS Default**: No public IPs assigned (`associate_public_ip_address = false`)
-- **Configuration**: Available in all AWS implementations if needed:
-  ```hcl
-  # aws/azure-devops-agent/terraform.tfvars
-  # aws/github-runner/terraform.tfvars
-  # aws/gitlab-runner/terraform.tfvars
-  associate_public_ip_address = true  # USE WITH CAUTION
-  ```
-
-**⚠️ Security Consequences of Public IP Addresses:**
-
-When `associate_public_ip_address = true`:
-- ✗ Instances are directly exposed to the internet
-- ✗ Increased attack surface for port scanning and brute force attacks
-- ✗ Higher risk of DDoS attacks
-- ✗ More difficult to implement centralized security controls
-- ✗ Harder to audit and monitor network traffic
-- ✗ Each instance becomes an independent internet endpoint
-
-When `associate_public_ip_address = false` (default):
-- ✓ Instances only accessible within VPC (defense in depth)
-- ✓ Reduced attack surface
-- ✓ Centralized outbound control via NAT Gateway
-- ✓ Easier to implement network security monitoring
-- ✓ Better compliance with network isolation requirements
-- ✓ Simplified network security group rules
-
-**Recommended Architecture for Internet Access:**
-Instead of public IPs, use:
-1. **NAT Gateway**: For outbound internet access from private subnets
-2. **VPC Endpoints**: For AWS service access without internet
-3. **AWS PrivateLink**: For accessing third-party SaaS securely
-
-Example with NAT Gateway:
-```hcl
-# Your runners get internet access via NAT Gateway
-# without being directly exposed
-associate_public_ip_address = false  # Secure default
-# Ensure your VPC has NAT Gateway configured
-```
-
-#### Private Subnets
-- **AWS**: Supports deployment in private subnets with NAT Gateway
-- **Azure**: VNet integration with service endpoints recommended
-
-### Secrets Management
-
-#### Sensitive Variables
-All tokens and secrets are marked as `sensitive = true`:
-- `github_token`
-- `gitlab_token`
-- `azp_token` (Azure DevOps)
-
-#### Best Practices
-1. **Never commit secrets** to version control
-2. **Use environment variables** or secret management services:
-   - AWS Secrets Manager / Parameter Store
-   - Azure Key Vault
-   - HashiCorp Vault
-3. **Rotate tokens** regularly
-4. **Use minimal scope** tokens (e.g., agent registration only)
-
-## 🛡️ Security Configurations
-
-### Production Deployment Checklist
-
-- [ ] SSH access disabled or restricted to specific IPs
-- [ ] Using private subnets with NAT Gateway
-- [ ] IMDSv2 enabled (AWS)
-- [ ] Disk encryption enabled
-- [ ] Secrets stored in secret management service
-- [ ] IAM roles follow least privilege
-- [ ] Security groups/NSGs reviewed and minimal
-- [ ] Monitoring and logging enabled
-- [ ] Auto-scaling limits configured appropriately
-- [ ] Spot instances configured with graceful shutdown
-- [ ] Tags applied for resource tracking
-
-### Monitoring & Compliance
-
-#### AWS CloudWatch
-- Detailed monitoring enabled by default
-- Logs sent to CloudWatch Logs
-- Consider enabling:
-  - VPC Flow Logs
-  - CloudTrail for API auditing
-  - GuardDuty for threat detection
-
-#### Azure Monitor
-- Auto-scale metrics collected
-- Consider enabling:
-  - Network Security Group flow logs
-  - Azure Security Center
-  - Azure Sentinel for SIEM
-
-## 🔐 Secure by Default
-
-All implementations follow security best practices by default:
+All implementations follow secure-by-default principles:
 
 | Feature | AWS | Azure | Default |
 |---------|-----|-------|---------|
@@ -286,55 +10,220 @@ All implementations follow security best practices by default:
 | Public IP | ❌ | ✅* | Disabled (AWS) |
 | Disk Encryption | ✅ | ✅ | Enabled |
 | IMDSv2 | ✅ | N/A | Required |
-| Managed Identity | ✅ | ✅ | Enabled |
-| Spot Instances | ✅ | ✅ | Enabled** |
+| IAM/Identity | Least privilege | Managed Identity | Enabled |
+| Network | Private subnets | VNet + NSG | Isolated |
 
-\* Azure VMSS requires public IP for outbound internet unless using NAT Gateway  
-\** Can be disabled for on-demand instances only
+\* Azure VMSS requires public IPs unless using NAT Gateway
 
-## 📝 Configuration Flexibility
+## Network Security
 
-While secure by default, all security settings can be configured:
+### SSH Access
+
+**Default: Disabled**
+
+Enable only for debugging with specific CIDRs:
 
 ```hcl
-# Example: Enable SSH for development environment
-module "github_runner_asg" {
-  # ... other configuration ...
-  
-  # Security settings
-  enable_ssh_access = true
-  ssh_cidr_blocks   = ["203.0.113.0/24"]  # Your office IP range
-  enable_imdsv2     = true                 # Keep IMDSv2 enabled
-  
-  # Optional: Enable public IP if needed
-  associate_public_ip_address = true
-  
-  # Use on-demand instead of spot for stability
-  use_spot_instances = false
-}
+# AWS
+enable_ssh_access = true
+ssh_cidr_blocks   = ["203.0.113.0/24"]  # Your IP range
+
+# Azure
+enable_ssh_access           = true
+ssh_source_address_prefixes = ["203.0.113.0/24"]
 ```
 
-## 🚨 Security Incident Response
+**Recommended alternatives:**
+- **AWS:** Systems Manager Session Manager (`aws ssm start-session`)
+- **Azure:** Azure Bastion or Serial Console
 
-If a security incident occurs:
+### Egress Control
 
-1. **Isolate**: Update security groups to block access
-2. **Investigate**: Check CloudWatch/Azure Monitor logs
-3. **Rotate**: Rotate all tokens and credentials
-4. **Update**: Apply security patches and updates
-5. **Review**: Review and update security configurations
+**Default: Allow all outbound** (required for CI/CD operations)
 
-## 📚 Additional Resources
+```hcl
+egress_cidr_blocks = ["0.0.0.0/0"]  # AWS default
+```
+
+For restricted environments:
+
+```hcl
+# Restrict to specific networks (requires VPC endpoints, private registries)
+egress_cidr_blocks = ["10.0.0.0/8", "172.16.0.0/12"]
+```
+
+**Note:** Restricting egress breaks CI/CD unless you provide:
+- VPC endpoints for cloud services (S3, ECR, SSM, CloudWatch)
+- Internal mirrors for package repositories (npm, pip, maven, etc.)
+- Proxy servers for external access
+
+### Public IP Addresses (AWS)
+
+**Default: Disabled** (`associate_public_ip_address = false`)
+
+Instances use NAT Gateway for outbound internet access. Enable public IPs only if necessary:
+
+```hcl
+associate_public_ip_address = true  # Not recommended
+```
+
+## Instance Metadata Security
+
+### AWS IMDSv2
+
+**Default: Required** (`enable_imdsv2 = true`)
+
+Protects against SSRF attacks. Disabling is **not recommended**:
+
+```hcl
+enable_imdsv2 = false  # Insecure - legacy compatibility only
+```
+
+### Azure Managed Identity
+
+System-assigned managed identity enabled by default for secure Azure resource access.
+
+## Encryption
+
+### AWS
+
+- EBS volumes encrypted by default using AWS-managed keys
+- Custom KMS keys can be configured via launch template
+
+### Azure
+
+- Managed disk encryption enabled by default
+- Customer-managed keys configurable via:
+  ```hcl
+  disk_encryption_set_id = azurerm_disk_encryption_set.example.id
+  ```
+
+## IAM / Identity
+
+### AWS IAM Roles
+
+Least privilege policies included:
+- `AmazonSSMManagedInstanceCore` - Session Manager access
+- `CloudWatchAgentServerPolicy` - Logging/monitoring
+
+No overly permissive policies (e.g., `AdministratorAccess`)
+
+### Azure Managed Identity
+
+System-assigned managed identity scoped to necessary resources only.
+
+## Secrets Management
+
+All sensitive variables marked `sensitive = true`:
+- `gitlab_token`, `github_token`, `azp_token`
+
+**Best practices:**
+1. Never commit secrets to version control
+2. Use secret management services:
+   - AWS Secrets Manager / Parameter Store
+   - Azure Key Vault
+   - HashiCorp Vault
+3. Rotate tokens regularly
+4. Use minimal scope tokens
+
+## Security Groups / NSG
+
+### AWS Security Groups
+
+**Ingress:** Denied by default (optional SSH from specific CIDRs)
+
+**Egress:** Allow all by default (required for CI/CD)
+
+### Azure Network Security Groups
+
+**Inbound:** Denied by default (optional SSH from specific IPs)
+
+**Outbound:** Allow all (required for runner operations)
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] SSH disabled or restricted to specific IPs
+- [ ] Using private subnets (AWS) or VNet with NSG (Azure)
+- [ ] IMDSv2 enabled (AWS)
+- [ ] Disk encryption verified
+- [ ] Secrets in secret management service
+- [ ] IAM/managed identities follow least privilege
+- [ ] Security groups/NSGs minimal and reviewed
+- [ ] Logging/monitoring enabled
+- [ ] Autoscaling limits configured
+- [ ] Resource tags applied
+
+## Monitoring
+
+### AWS
+
+- CloudWatch Logs for runner operations
+- Consider: VPC Flow Logs, CloudTrail, GuardDuty
+
+### Azure
+
+- Azure Monitor for autoscale metrics
+- Consider: NSG flow logs, Security Center, Sentinel
+
+## Configuration Examples
+
+### Development (More Permissive)
+
+```hcl
+enable_ssh_access      = true
+ssh_cidr_blocks        = ["203.0.113.0/24"]  # Office IP
+enable_imdsv2          = true  # Keep enabled
+use_spot_instances     = true  # Cost savings
+```
+
+### Production (Secure)
+
+```hcl
+enable_ssh_access               = false
+associate_public_ip_address     = false  # AWS
+enable_imdsv2                   = true
+use_spot_instances              = true  # With graceful shutdown
+
+# Enable security features
+enable_centralized_logging = true
+enable_runner_monitoring   = true
+```
+
+### High-Security (Restricted)
+
+```hcl
+enable_ssh_access               = false
+associate_public_ip_address     = false
+enable_imdsv2                   = true
+egress_cidr_blocks              = ["10.0.0.0/8", "172.16.0.0/12"]
+
+# VPC endpoints required for AWS services
+# Private registries required for Docker images
+# Internal mirrors required for packages
+```
+
+## Incident Response
+
+If security incident occurs:
+
+1. **Isolate:** Update security groups to block access
+2. **Investigate:** Review CloudWatch/Azure Monitor logs
+3. **Rotate:** Rotate all tokens and credentials
+4. **Update:** Apply security patches
+5. **Review:** Update security configurations
+
+## Security Reviews
+
+Recommended frequency:
+- **Weekly:** Review access logs and alerts
+- **Monthly:** Rotate credentials
+- **Quarterly:** Full security audit
+- **Annually:** Penetration testing
+
+## References
 
 - [AWS Security Best Practices](https://aws.amazon.com/security/best-practices/)
 - [Azure Security Best Practices](https://docs.microsoft.com/en-us/azure/security/fundamentals/best-practices-and-patterns)
-- [OWASP Cloud Security](https://owasp.org/www-project-cloud-security/)
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks/)
-
-## 🔄 Regular Security Reviews
-
-Recommended frequency:
-- **Weekly**: Review access logs and alerts
-- **Monthly**: Review and rotate credentials
-- **Quarterly**: Full security audit and compliance check
-- **Annually**: Penetration testing and vulnerability assessment
