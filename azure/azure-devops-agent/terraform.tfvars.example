@@ -18,12 +18,52 @@ azp_agent_name_prefix = "azure-agent"
 # subnet_address_prefix = "10.0.1.0/24"
 
 # VM Configuration
+# ============================================================================
+# ARM64 (Ampere Altra) instances offer up to 50% cost savings vs x86-64
+# See DOCKER_IMAGES.md for architecture-specific considerations
+#
+# x86-64 (Intel/AMD):
+#   Standard_D2s_v3    - 2 vCPU, 8GB RAM   ~$24/month spot
+#   Standard_D2as_v4   - 2 vCPU, 8GB RAM   ~$19/month spot (AMD)
+#   Standard_F2s_v2    - 2 vCPU, 4GB RAM   ~$18/month spot (CPU-optimized)
+#
+# ARM64 (Ampere Altra):
+#   Standard_D2ps_v5   - 2 vCPU, 8GB RAM   ~$12/month spot (50% savings!)
+#   Standard_D4ps_v5   - 4 vCPU, 16GB RAM  ~$24/month spot (50% savings!)
+#   Standard_E2ps_v5   - 2 vCPU, 16GB RAM  ~$14/month spot (memory-optimized)
+#
+# All Docker images support both architectures automatically
+# ============================================================================
 vm_sku             = "Standard_D2s_v3"  # 2 vCPU, 8 GB RAM
 use_spot_instances = true                # Use Spot instances for ~70-90% cost savings
 spot_max_price     = -1                  # -1 = pay up to on-demand price
 
 # Availability Zones
 zones = ["1", "2", "3"]
+
+# Docker Image Configuration
+# ============================================================================
+# See DOCKER_IMAGES.md for complete profile documentation and cost analysis
+#
+# Available profiles:
+#   latest     - Alias for 'full' (production default)
+#   full       - Complete IaC toolchain (Terraform, OpenTofu, Terraspace, cloud CLIs, K8s, PowerShell) ~2.8GB
+#   minimal    - Bare minimum (Git + sudo only, no Docker) ~400MB - ideal for compiled languages
+#   k8s        - Kubernetes tools (kubectl, helm, kustomize, kubelogin) + Docker ~1.5GB
+#   iac        - Infrastructure as Code (Terraform, OpenTofu, Terraspace, cloud CLIs) + Docker ~2.0GB
+#   iac-pwsh   - IaC + PowerShell (adds Azure/AWS PowerShell modules) ~2.3GB
+#
+# Multi-architecture: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller profiles = faster startup + lower storage costs
+#
+# Examples by use case:
+#   "fok666/azure-devops-agent:full"     - Production (comprehensive tooling)
+#   "fok666/azure-devops-agent:minimal"  - Cost-optimized (simple builds, Go/Rust projects)
+#   "fok666/azure-devops-agent:k8s"      - Kubernetes deployments and GitOps
+#   "fok666/azure-devops-agent:iac"      - Terraform/OpenTofu without PowerShell
+#   "fok666/azure-devops-agent:iac-pwsh" - Terraform/OpenTofu with PowerShell automation
+# ============================================================================
+# docker_image = "fok666/azure-devops-agent:latest"
 
 # Autoscaling Configuration
 enable_autoscaling = true

@@ -9,6 +9,22 @@ gitlab_token = "glrt-your-registration-token-here" # Get from GitLab: Settings >
 runner_tags  = "docker,linux,azure,spot"
 
 # VM Configuration
+# ============================================================================
+# ARM64 (Ampere Altra) instances offer up to 50% cost savings vs x86-64
+# See DOCKER_IMAGES.md for architecture-specific considerations
+#
+# x86-64 (Intel/AMD):
+#   Standard_D2s_v3    - 2 vCPU, 8GB RAM   ~$24/month spot
+#   Standard_D2as_v4   - 2 vCPU, 8GB RAM   ~$19/month spot (AMD)
+#   Standard_F2s_v2    - 2 vCPU, 4GB RAM   ~$18/month spot (CPU-optimized)
+#
+# ARM64 (Ampere Altra):
+#   Standard_D2ps_v5   - 2 vCPU, 8GB RAM   ~$12/month spot (50% savings!)
+#   Standard_D4ps_v5   - 4 vCPU, 16GB RAM  ~$24/month spot (50% savings!)
+#   Standard_E2ps_v5   - 2 vCPU, 16GB RAM  ~$14/month spot (memory-optimized)
+#
+# All Docker images support both architectures automatically
+# ============================================================================
 vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8 GB RAM
 use_spot_instances = true
 spot_max_price     = -1 # Pay up to on-demand price
@@ -20,7 +36,30 @@ default_instances = 1
 
 # Runner Configuration
 runner_count_per_vm = 0 # 0 = auto-detect based on vCPU count
-docker_image        = "fok666/gitlab-runner:latest"
+
+# Docker Image Configuration
+# ============================================================================
+# See DOCKER_IMAGES.md for complete profile documentation and cost analysis
+#
+# Available profiles:
+#   latest     - Alias for 'full' (production default)
+#   full       - Complete IaC toolchain (Terraform, OpenTofu, Terraspace, cloud CLIs, K8s, PowerShell) ~2.8GB
+#   minimal    - Bare minimum (Git + sudo only, no Docker) ~400MB - ideal for compiled languages
+#   k8s        - Kubernetes tools (kubectl, helm, kustomize, kubelogin) + Docker ~1.5GB
+#   iac        - Infrastructure as Code (Terraform, OpenTofu, Terraspace, cloud CLIs) + Docker ~2.0GB
+#   iac-pwsh   - IaC + PowerShell (adds Azure/AWS PowerShell modules) ~2.3GB
+#
+# Multi-architecture: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller profiles = faster startup + lower storage costs
+#
+# Examples by use case:
+#   "fok666/gitlab-runner:full"     - Production (comprehensive tooling)
+#   "fok666/gitlab-runner:minimal"  - Cost-optimized (simple builds, Go/Rust projects)
+#   "fok666/gitlab-runner:k8s"      - Kubernetes deployments and GitOps
+#   "fok666/gitlab-runner:iac"      - Terraform/OpenTofu without PowerShell
+#   "fok666/gitlab-runner:iac-pwsh" - Terraform/OpenTofu with PowerShell automation
+# ============================================================================
+docker_image = "fok666/gitlab-runner:latest"
 
 # Storage
 os_disk_size_gb = 100

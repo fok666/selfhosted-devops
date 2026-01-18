@@ -17,10 +17,50 @@ azp_agent_name_prefix = "aws-agent"
 # vpc_cidr = "10.0.0.0/16"
 
 # EC2 Configuration
+# ============================================================================
+# ARM64 (Graviton) instances offer up to 40% cost savings vs x86-64
+# See DOCKER_IMAGES.md for architecture-specific considerations
+#
+# x86-64 (Intel/AMD):
+#   t3.medium  - 2 vCPU, 4GB RAM  ~$30/month spot
+#   t3.large   - 2 vCPU, 8GB RAM  ~$60/month spot
+#   c5.large   - 2 vCPU, 4GB RAM  ~$40/month spot (CPU-optimized)
+#
+# ARM64 (Graviton2/3):
+#   t4g.medium - 2 vCPU, 4GB RAM  ~$18/month spot (40% savings!)
+#   t4g.large  - 2 vCPU, 8GB RAM  ~$36/month spot (40% savings!)
+#   c7g.large  - 2 vCPU, 4GB RAM  ~$24/month spot (CPU-optimized)
+#
+# All Docker images support both architectures automatically
+# ============================================================================
 instance_types     = ["t3.medium", "t3a.medium", "t2.medium"]  # Diversify for spot availability
 use_spot_instances = true  # Use Spot instances for ~70% cost savings
 spot_max_price     = ""    # Empty = pay up to on-demand price
 spot_instance_pools = 3    # Number of instance types to use
+
+# Docker Image Configuration
+# ============================================================================
+# See DOCKER_IMAGES.md for complete profile documentation and cost analysis
+#
+# Available profiles:
+#   latest     - Alias for 'full' (production default)
+#   full       - Complete IaC toolchain (Terraform, OpenTofu, Terraspace, cloud CLIs, K8s, PowerShell) ~2.8GB
+#   minimal    - Bare minimum (Git + sudo only, no Docker) ~400MB - ideal for compiled languages
+#   k8s        - Kubernetes tools (kubectl, helm, kustomize, kubelogin) + Docker ~1.5GB
+#   iac        - Infrastructure as Code (Terraform, OpenTofu, Terraspace, cloud CLIs) + Docker ~2.0GB
+#   iac-pwsh   - IaC + PowerShell (adds Azure/AWS PowerShell modules) ~2.3GB
+#
+# Multi-architecture: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller profiles = faster startup + lower storage costs
+#
+# Examples by use case:
+#   "fok666/azure-devops-agent:full"     - Production (comprehensive tooling)
+#   "fok666/azure-devops-agent:minimal"  - Cost-optimized (simple builds, Go/Rust projects)
+#   "fok666/azure-devops-agent:k8s"      - Kubernetes deployments and GitOps
+#   "fok666/azure-devops-agent:iac"      - Terraform/OpenTofu without PowerShell
+#   "fok666/azure-devops-agent:iac-pwsh" - Terraform/OpenTofu with PowerShell automation
+# ============================================================================
+# docker_image = "fok666/azure-devops-agent:latest"
 
 # Autoscaling Configuration
 enable_autoscaling      = true

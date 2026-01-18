@@ -13,6 +13,22 @@ github_token = "your-registration-token-here"           # Get from GitHub: Setti
 runner_labels = "self-hosted,linux,x64,aws,spot"
 
 # Instance Configuration
+# ============================================================================
+# ARM64 (Graviton) instances offer up to 40% cost savings vs x86-64
+# See DOCKER_IMAGES.md for architecture-specific considerations
+#
+# x86-64 (Intel/AMD):
+#   t3.medium  - 2 vCPU, 4GB RAM  ~$30/month spot
+#   t3.large   - 2 vCPU, 8GB RAM  ~$60/month spot
+#   c5.large   - 2 vCPU, 4GB RAM  ~$40/month spot (CPU-optimized)
+#
+# ARM64 (Graviton2/3):
+#   t4g.medium - 2 vCPU, 4GB RAM  ~$18/month spot (40% savings!)
+#   t4g.large  - 2 vCPU, 8GB RAM  ~$36/month spot (40% savings!)
+#   c7g.large  - 2 vCPU, 4GB RAM  ~$24/month spot (CPU-optimized)
+#
+# All Docker images support both architectures automatically
+# ============================================================================
 instance_type       = "t3.medium" # 2 vCPU, 4 GB RAM
 use_spot_instances  = true
 spot_max_price      = "" # Empty for on-demand price
@@ -25,7 +41,30 @@ desired_capacity = 1
 
 # Runner Configuration
 runner_count_per_instance = 0 # 0 = auto-detect based on vCPU count
-docker_image              = "fok666/github-runner:latest"
+
+# Docker Image Configuration
+# ============================================================================
+# See DOCKER_IMAGES.md for complete profile documentation and cost analysis
+#
+# Available profiles:
+#   latest     - Alias for 'full' (production default)
+#   full       - Complete IaC toolchain (Terraform, OpenTofu, Terraspace, cloud CLIs, K8s, PowerShell) ~2.8GB
+#   minimal    - Bare minimum (Git + sudo only, no Docker) ~400MB - ideal for compiled languages
+#   k8s        - Kubernetes tools (kubectl, helm, kustomize, kubelogin) + Docker ~1.5GB
+#   iac        - Infrastructure as Code (Terraform, OpenTofu, Terraspace, cloud CLIs) + Docker ~2.0GB
+#   iac-pwsh   - IaC + PowerShell (adds Azure/AWS PowerShell modules) ~2.3GB
+#
+# Multi-architecture: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller profiles = faster startup + lower storage costs
+#
+# Examples by use case:
+#   "fok666/github-runner:full"     - Production (comprehensive tooling)
+#   "fok666/github-runner:minimal"  - Cost-optimized (simple builds, Go/Rust projects)
+#   "fok666/github-runner:k8s"      - Kubernetes deployments and GitOps
+#   "fok666/github-runner:iac"      - Terraform/OpenTofu without PowerShell
+#   "fok666/github-runner:iac-pwsh" - Terraform/OpenTofu with PowerShell automation
+# ============================================================================
+docker_image = "fok666/github-runner:latest"
 
 # Storage
 root_volume_size = 100
