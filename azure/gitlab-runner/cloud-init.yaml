@@ -70,6 +70,18 @@ write_files:
       RUNNER_COUNT="${runner_count}"
       DOCKER_IMAGE="${runner_docker_image}"
       
+      # Caching configuration
+      ENABLE_CACHE="${enable_distributed_cache}"
+      CACHE_TYPE="${cache_type}"
+      CACHE_SHARED="${cache_shared}"
+      CACHE_STORAGE_ACCOUNT="${cache_storage_account_name}"
+      CACHE_CONTAINER="${cache_storage_container_name}"
+      CACHE_ACCESS_KEY="${cache_storage_account_key}"
+      
+      # Monitoring configuration
+      ENABLE_MONITORING="${enable_runner_monitoring}"
+      METRICS_PORT="${metrics_port}"
+      
       # Auto-detect runner count based on CPU count if runner_count is 0
       if [ "$RUNNER_COUNT" = "0" ]; then
         CPU_COUNT=$(nproc)
@@ -116,31 +128,137 @@ write_files:
           docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
         fi
         
-        docker run \
+        # Build docker run command
+        DOCKER_RUN_CMD="docker run \
           --privileged \
           --tty \
           --detach \
-          --cpus="$${MAX_CPU}" \
-          -e GITLAB_URL="$GITLAB_URL" \
-          -e GITLAB_TOKEN="$GITLAB_TOKEN" \
-          -e RUNNER_NAME="$RUNNER_NAME" \
-          -e RUNNER_TAGS="$RUNNER_TAGS" \
-          -e RUNNER_EXECUTOR="docker" \
-          -e RUNNER_DOCKER_IMAGE="alpine:latest" \
-          -e RUNNER_RUN_UNTAGGED="false" \
-          -e RUNNER_LOCKED="false" \
-          -e RUNNER_ACCESS_LEVEL="not_protected" \
-          -v "$CONFIG_DIR":/etc/gitlab-runner \
-          -v "$DATA_DIR":/runner \
+          --cpus=\"$${MAX_CPU}\" \
+          -e GITLAB_URL=\"$GITLAB_URL\" \
+          -e GITLAB_TOKEN=\"$GITLAB_TOKEN\" \
+          -e RUNNER_NAME=\"$RUNNER_NAME\" \
+          -e RUNNER_TAGS=\"$RUNNER_TAGS\" \
+          -e RUNNER_EXECUTOR=\"docker\" \
+          -e RUNNER_DOCKER_IMAGE=\"alpine:latest\" \
+          -e RUNNER_RUN_UNTAGGED=\"false\" \
+          -e RUNNER_LOCKED=\"false\" \
+          -e RUNNER_ACCESS_LEVEL=\"not_protected\""
+        
+        # Add cache configuration if enabled
+        if [ "$ENABLE_CACHE" = "true" ]; then
+          echo "  Configuring distributed cache (Azure Blob Storage)..."
+          DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
+          -e CACHE_TYPE=\"$CACHE_TYPE\" \
+          -e CACHE_SHARED=\"$CACHE_SHARED\" \
+          -e CACHE_AZURE_ACCOUNT_NAME=\"$CACHE_STORAGE_ACCOUNT\" \
+          -e CACHE_AZURE_CONTAINER_NAME=\"$CACHE_CONTAINER\""
+          
+          if [ -n "$CACHE_ACCESS_KEY" ]; then
+            DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
+          -e CACHE_AZURE_ACCESS_KEY=\"$CACHE_ACCESS_KEY\""
+          fi
+        fi
+        
+        # Add monitoring configuration if enabled
+        if [ "$ENABLE_MONITORING" = "true" ]; then
+          echo "  Enabling Prometheus metrics on port $METRICS_PORT..."
+          DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
+          -p $METRICS_PORT:9252"
+        fi
+        
+        # Add volume mounts and finish command
+        DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
+          -v \"$CONFIG_DIR\":/etc/gitlab-runner \
+          -v \"$DATA_DIR\":/runner \
           -v /var/run/docker.sock:/var/run/docker.sock \
           --restart unless-stopped \
-          --name "$CONTAINER_NAME" \
-          "$DOCKER_IMAGE"
+          --name \"$CONTAINER_NAME\" \
+          \"$DOCKER_IMAGE\""
+        
+        # Execute the docker run command
+        eval $DOCKER_RUN_CMD
         
         echo "  Container $CONTAINER_NAME started successfully"
       done
       
       echo "All runners started successfully!"
+      
+      # Configure cache in runner config if enabled
+      if [ "$ENABLE_CACHE" = "true" ]; then
+        echo "Configuring distributed cache in runner configuration..."
+        for R in $(seq 1 $RUNNER_COUNT); do
+          CONFIG_DIR="/mnt/gitlab-runner$R/config"
+          CONFIG_FILE="$CONFIG_DIR/config.toml"
+          
+          # Wait for config file to be created by runner registration
+          sleep 5
+          
+          if [ -f "$CONFIG_FILE" ]; then
+            # Append cache configuration to config.toml
+            cat >> "$CONFIG_FILE" << CACHEEOF
+
+[[runners.cache]]
+  Type = "$CACHE_TYPE"
+  Shared = $CACHE_SHARED
+  [runners.cache.azure]
+    AccountName = "$CACHE_STORAGE_ACCOUNT"
+    ContainerName = "$CACHE_CONTAINER"
+    StorageDomain = "blob.core.windows.net"
+CACHEEOF
+            echo "  Cache configuration added to $CONFIG_FILE"
+          fi
+        done
+      fi
+
+  - path: /opt/configure-logging.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      ENABLE_LOGGING="${enable_centralized_logging}"
+      WORKSPACE_ID="${log_analytics_workspace_id}"
+      WORKSPACE_KEY="${log_analytics_workspace_key}"
+      
+      if [ "$ENABLE_LOGGING" != "true" ]; then
+        echo "Centralized logging not enabled, skipping..."
+        exit 0
+      fi
+      
+      if [ -z "$WORKSPACE_ID" ] || [ -z "$WORKSPACE_KEY" ]; then
+        echo "Warning: Log Analytics credentials not provided, skipping logging configuration"
+        exit 0
+      fi
+      
+      echo "Installing Azure Monitor Agent..."
+      
+      # Download and install OMS Agent for Linux
+      wget -q https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh
+      
+      # Extract workspace ID from full resource ID
+      WORKSPACE_ID_SHORT=$(echo "$WORKSPACE_ID" | rev | cut -d'/' -f1 | rev)
+      
+      # Install and configure agent
+      sh onboard_agent.sh -w "$WORKSPACE_ID_SHORT" -s "$WORKSPACE_KEY" -d opinsights.azure.com
+      
+      echo "Configuring log collection..."
+      
+      # Configure custom log collection for GitLab runners
+      cat > /etc/opt/microsoft/omsagent/"$WORKSPACE_ID_SHORT"/conf/omsagent.d/gitlab-runner.conf << 'LOGEOF'
+<source>
+  type tail
+  path /var/log/gitlab-runner-init.log,/var/log/vmss_monitor.log,/var/log/docker.log
+  pos_file /var/opt/microsoft/omsagent/state/gitlab-runner.pos
+  tag oms.gitlab.runner
+  format none
+</source>
+LOGEOF
+      
+      # Restart OMS agent
+      /opt/microsoft/omsagent/bin/service_control restart "$WORKSPACE_ID_SHORT"
+      
+      echo "Azure Monitor Agent configured successfully!"
+
 
 runcmd:
   # Start and enable Docker
@@ -152,6 +270,9 @@ runcmd:
   
   # Set up VMSS monitoring cron job
   - (crontab -l 2>/dev/null; echo "* * * * * /opt/vmss_monitor.sh >> /var/log/vmss_monitor.log 2>&1") | crontab -
+  
+  # Configure centralized logging (if enabled)
+  - /opt/configure-logging.sh >> /var/log/logging-setup.log 2>&1 || true
   
   # Start GitLab runners
   - sleep 10

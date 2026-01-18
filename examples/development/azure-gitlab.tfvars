@@ -18,49 +18,49 @@
 # -----------------------------------------------------------------------------
 # REQUIRED: You MUST customize these values
 # -----------------------------------------------------------------------------
-project_name = "dev-gitlab-runner"                 # Change to your project name
-gitlab_url   = "https://gitlab.com"                # Or your GitLab instance URL
-gitlab_token = "glrt-xxxxx"                        # Get from GitLab: Settings > CI/CD > Runners
+project_name = "dev-gitlab-runner"  # Change to your project name
+gitlab_url   = "https://gitlab.com" # Or your GitLab instance URL
+gitlab_token = "glrt-xxxxx"         # Get from GitLab: Settings > CI/CD > Runners
 
 # -----------------------------------------------------------------------------
 # Azure Configuration
 # -----------------------------------------------------------------------------
-location = "East US"                               # Change to your preferred region
+location = "East US" # Change to your preferred region
 
 # -----------------------------------------------------------------------------
 # Runner Configuration
 # -----------------------------------------------------------------------------
-runner_tags = "docker,linux,azure,development"     # Tags for job matching
+runner_tags = "docker,linux,azure,development" # Tags for job matching
 
 # -----------------------------------------------------------------------------
 # Compute Configuration - Balanced for development
 # -----------------------------------------------------------------------------
-vm_sku             = "Standard_D2s_v3"             # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
-use_spot_instances = true                          # Use spot for cost savings
-spot_max_price     = -1                            # Pay up to on-demand price
+vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
+use_spot_instances = true              # Use spot for cost savings
+spot_max_price     = -1                # Pay up to on-demand price
 
 # -----------------------------------------------------------------------------
 # Autoscaling - Maintain 1 baseline instance
 # -----------------------------------------------------------------------------
-min_instances     = 1                              # Always 1 instance available
-max_instances     = 5                              # Scale up to 5 for peak load
-default_instances = 1                              # Start with 1 instance
+min_instances     = 1 # Always 1 instance available
+max_instances     = 5 # Scale up to 5 for peak load
+default_instances = 1 # Start with 1 instance
 
 # -----------------------------------------------------------------------------
 # Runner Instances per VM
 # -----------------------------------------------------------------------------
-runner_count_per_vm = 0                            # 0 = auto (will use 2 for 2 vCPU)
+runner_count_per_vm = 0 # 0 = auto (will use 2 for 2 vCPU)
 
 # -----------------------------------------------------------------------------
 # Docker Configuration
 # -----------------------------------------------------------------------------
-docker_image = "fok666/gitlab-runner:latest"       # Pre-configured GitLab Runner
+docker_image = "fok666/gitlab-runner:latest" # Pre-configured GitLab Runner
 
 # -----------------------------------------------------------------------------
 # Storage - Good space for Docker caching
 # -----------------------------------------------------------------------------
-os_disk_size_gb = 100                              # 100GB for good caching
-os_disk_type    = "StandardSSD_LRS"                # Standard SSD
+os_disk_size_gb = 100               # 100GB for good caching
+os_disk_type    = "StandardSSD_LRS" # Standard SSD
 
 # -----------------------------------------------------------------------------
 # Network Configuration - Use defaults

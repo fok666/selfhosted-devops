@@ -447,3 +447,160 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+# =============================================================================
+# Distributed Caching Configuration (Optional)
+# =============================================================================
+
+variable "enable_distributed_cache" {
+  description = <<-EOT
+    Enable distributed cache for runners (RECOMMENDED for production).
+    
+    Benefits:
+    - Shares cached dependencies between ephemeral runners
+    - Significantly faster builds (avoids re-downloading dependencies)
+    - Required for effective autoscaling with ephemeral runners
+    
+    Cost Impact: Storage costs (~$0.02/GB/month for Blob Storage)
+    
+    Default: false (for backward compatibility)
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cache_type" {
+  description = <<-EOT
+    Cache storage type (azurerm for Azure Blob Storage).
+    Only used when enable_distributed_cache = true.
+  EOT
+  type        = string
+  default     = "azurerm"
+
+  validation {
+    condition     = contains(["azurerm"], var.cache_type)
+    error_message = "cache_type must be 'azurerm' for Azure deployments"
+  }
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Share cache between all runners (removes runner token from cache path).
+    
+    - true: All runners share the same cache (RECOMMENDED for teams)
+    - false: Each runner has isolated cache (useful for security-sensitive workloads)
+    
+    Default: true
+  EOT
+  type        = bool
+  default     = true
+}
+
+variable "cache_storage_account_name" {
+  description = <<-EOT
+    Azure Storage Account name for cache (required when enable_distributed_cache = true).
+    Must be globally unique, 3-24 lowercase alphanumeric characters.
+    
+    Example: "mycompanyrunnercache"
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "cache_storage_container_name" {
+  description = "Azure Blob container name for cache"
+  type        = string
+  default     = "runner-cache"
+}
+
+variable "cache_storage_account_key" {
+  description = "Azure Storage Account access key (leave empty to use Managed Identity)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# =============================================================================
+# Centralized Logging Configuration (Optional)
+# =============================================================================
+
+variable "enable_centralized_logging" {
+  description = <<-EOT
+    Enable centralized logging to Azure Log Analytics (RECOMMENDED for production).
+    
+    Benefits:
+    - Centralized log aggregation and search
+    - Long-term log retention and compliance
+    - Advanced log analytics and alerting
+    - Essential for troubleshooting ephemeral runners
+    
+    Cost Impact: ~$2-5/GB ingested + retention costs
+    
+    Default: false (for backward compatibility)
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "log_analytics_workspace_id" {
+  description = <<-EOT
+    Azure Log Analytics Workspace ID (required when enable_centralized_logging = true).
+    
+    Format: /subscriptions/{subscription-id}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{workspace}
+    
+    Create workspace: az monitor log-analytics workspace create
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "log_analytics_workspace_key" {
+  description = "Azure Log Analytics Workspace shared key (required when enable_centralized_logging = true)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "log_retention_days" {
+  description = "Log retention period in days (30, 60, 90, 120, 180, 365)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([30, 60, 90, 120, 180, 365], var.log_retention_days)
+    error_message = "log_retention_days must be one of: 30, 60, 90, 120, 180, 365"
+  }
+}
+
+# =============================================================================
+# Runner Monitoring Configuration (Optional)
+# =============================================================================
+
+variable "enable_runner_monitoring" {
+  description = <<-EOT
+    Enable Prometheus metrics exposure for runner monitoring (RECOMMENDED for production).
+    
+    Benefits:
+    - Real-time runner health and performance metrics
+    - Track job duration, queue depth, and throughput
+    - Integrate with Grafana for visualization
+    - Proactive alerting on runner issues
+    
+    Cost Impact: Minimal (uses Azure Monitor metrics)
+    
+    Default: false (for backward compatibility)
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "metrics_port" {
+  description = "Port for exposing Prometheus metrics endpoint"
+  type        = number
+  default     = 9252
+
+  validation {
+    condition     = var.metrics_port >= 1024 && var.metrics_port <= 65535
+    error_message = "metrics_port must be between 1024 and 65535"
+  }
+}

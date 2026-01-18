@@ -80,6 +80,14 @@ RUNNER_TAGS="${runner_tags}"
 RUNNER_COUNT="${runner_count}"
 DOCKER_IMAGE="${runner_docker_image}"
 
+# Production Features Configuration
+ENABLE_CACHE="${enable_distributed_cache}"
+CACHE_S3_BUCKET="${cache_s3_bucket_name}"
+CACHE_S3_REGION="${cache_s3_bucket_region}"
+CACHE_SHARED="${cache_shared}"
+ENABLE_MONITORING="${enable_runner_monitoring}"
+METRICS_PORT="${metrics_port}"
+
 # Auto-detect runner count based on CPU count if runner_count is 0
 if [ "$RUNNER_COUNT" = "0" ]; then
   CPU_COUNT=$(nproc)
@@ -126,28 +134,82 @@ for R in $(seq 1 $RUNNER_COUNT); do
     docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
   fi
   
-  docker run \
-    --privileged \
-    --tty \
-    --detach \
-    --cpus="$${MAX_CPU}" \
-    -e GITLAB_URL="$GITLAB_URL" \
-    -e GITLAB_TOKEN="$GITLAB_TOKEN" \
-    -e RUNNER_NAME="$RUNNER_NAME" \
-    -e RUNNER_TAGS="$RUNNER_TAGS" \
-    -e RUNNER_EXECUTOR="docker" \
-    -e RUNNER_DOCKER_IMAGE="alpine:latest" \
-    -e RUNNER_RUN_UNTAGGED="false" \
-    -e RUNNER_LOCKED="false" \
-    -e RUNNER_ACCESS_LEVEL="not_protected" \
-    -v "$CONFIG_DIR":/etc/gitlab-runner \
-    -v "$DATA_DIR":/runner \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    --restart unless-stopped \
-    --name "$CONTAINER_NAME" \
-    "$DOCKER_IMAGE"
+  # Build docker run command dynamically
+  DOCKER_CMD="docker run --privileged --tty --detach --cpus=\"$${MAX_CPU}\""
+  DOCKER_CMD="$DOCKER_CMD -e GITLAB_URL=\"$GITLAB_URL\""
+  DOCKER_CMD="$DOCKER_CMD -e GITLAB_TOKEN=\"$GITLAB_TOKEN\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_NAME=\"$RUNNER_NAME\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_TAGS=\"$RUNNER_TAGS\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_EXECUTOR=\"docker\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_DOCKER_IMAGE=\"alpine:latest\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_RUN_UNTAGGED=\"false\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_LOCKED=\"false\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_ACCESS_LEVEL=\"not_protected\""
+  
+  # Add monitoring configuration if enabled
+  if [ "$ENABLE_MONITORING" = "true" ]; then
+    echo "  Enabling Prometheus metrics on port $METRICS_PORT"
+    DOCKER_CMD="$DOCKER_CMD -p $METRICS_PORT:$METRICS_PORT"
+    DOCKER_CMD="$DOCKER_CMD -e RUNNER_LISTEN_ADDRESS=\":$METRICS_PORT\""
+  fi
+  
+  DOCKER_CMD="$DOCKER_CMD -v \"$CONFIG_DIR\":/etc/gitlab-runner"
+  DOCKER_CMD="$DOCKER_CMD -v \"$DATA_DIR\":/runner"
+  DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
+  DOCKER_CMD="$DOCKER_CMD --restart unless-stopped"
+  DOCKER_CMD="$DOCKER_CMD --name \"$CONTAINER_NAME\""
+  DOCKER_CMD="$DOCKER_CMD \"$DOCKER_IMAGE\""
+  
+  # Execute docker run
+  eval "$DOCKER_CMD"
   
   echo "  Container $CONTAINER_NAME started successfully"
+  
+  # Configure distributed cache if enabled
+  if [ "$ENABLE_CACHE" = "true" ]; then
+    echo "  Configuring S3 distributed cache..."
+    
+    # Wait for config.toml to be created
+    sleep 5
+    CONFIG_FILE="$CONFIG_DIR/config.toml"
+    
+    # Determine cache path based on sharing preference
+    if [ "$CACHE_SHARED" = "true" ]; then
+      CACHE_PATH="gitlab-runner"
+      echo "    Using shared cache for all runners"
+    else
+      CACHE_PATH="gitlab-runner-$R"
+      echo "    Using isolated cache for this runner"
+    fi
+    
+    # Use AWS region from variable or default to us-east-1
+    CACHE_REGION="$${CACHE_S3_REGION:-us-east-1}"
+    
+    # Add cache configuration to config.toml
+    if [ -f "$CONFIG_FILE" ]; then
+      # Backup original config
+      cp "$CONFIG_FILE" "$CONFIG_FILE.bak"
+      
+      # Insert cache configuration before [[runners]] section
+      sed -i '/\[\[runners\]\]/i \
+  [runners.cache]\n\
+    Type = "s3"\n\
+    Shared = '"$CACHE_SHARED"'\n\
+    [runners.cache.s3]\n\
+      ServerAddress = "s3.amazonaws.com"\n\
+      BucketName = "'"$CACHE_S3_BUCKET"'"\n\
+      BucketLocation = "'"$CACHE_REGION"'"\n\
+' "$CONFIG_FILE"
+      
+      echo "    Cache configured: s3://$CACHE_S3_BUCKET/$CACHE_PATH"
+      
+      # Restart runner to apply cache configuration
+      docker restart "$CONTAINER_NAME" > /dev/null 2>&1
+      echo "    Runner restarted with cache configuration"
+    else
+      echo "    Warning: config.toml not found, cache configuration skipped"
+    fi
+  fi
 done
 
 echo "All runners started successfully!"
@@ -156,6 +218,52 @@ chmod +x /opt/run-gitlab-runners.sh
 
 # Wait for Docker to be fully ready
 sleep 10
+
+# Configure CloudWatch Logs if enabled
+ENABLE_LOGGING="${enable_centralized_logging}"
+if [ "$ENABLE_LOGGING" = "true" ]; then
+  echo "Configuring CloudWatch Logs..."
+  
+  # Install CloudWatch agent
+  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+  dpkg -i -E ./amazon-cloudwatch-agent.deb
+  rm amazon-cloudwatch-agent.deb
+  
+  # Create CloudWatch agent configuration
+  cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CWEOF'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/gitlab-runner-init.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/init",
+            "retention_in_days": ${log_retention_days}
+          },
+          {
+            "file_path": "/var/log/ec2_monitor.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/monitor",
+            "retention_in_days": ${log_retention_days}
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+  
+  # Start CloudWatch agent
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
+  
+  echo "CloudWatch Logs configured successfully"
+fi
 
 # Start GitLab runners
 /opt/run-gitlab-runners.sh >> /var/log/gitlab-runner-init.log 2>&1
