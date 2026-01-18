@@ -573,20 +573,15 @@ variable "cache_shared" {
     Enable cache sharing across all agents.
     
     **Options:**
-    - "true": All agents share the same cache (recommended for teams)
-    - "false": Each agent has its own isolated cache
+    - true: All agents share the same cache (recommended for teams)
+    - false: Each agent has its own isolated cache
     
     **Recommendation:** true (faster builds, better cache hit rate)
     
-    **Default:** "true"
+    **Default:** true
   EOT
-  type        = string
-  default     = "true"
-
-  validation {
-    condition     = contains(["true", "false"], var.cache_shared)
-    error_message = "cache_shared must be either 'true' or 'false' (as string)"
-  }
+  type        = bool
+  default     = true
 }
 
 # ---------- Centralized Logging (CloudWatch) ----------

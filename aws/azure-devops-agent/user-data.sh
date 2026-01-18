@@ -183,49 +183,6 @@ for A in $(seq 1 $AGENT_COUNT); do
 done
 
 echo "All agents started successfully!"
-
-# Install and configure CloudWatch Agent if centralized logging is enabled
-if [ "$ENABLE_LOGGING" = "true" ]; then
-  echo "Installing Amazon CloudWatch Agent for centralized logging..."
-  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
-  dpkg -i amazon-cloudwatch-agent.deb
-  
-  # Create CloudWatch agent configuration
-  cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CLOUDWATCH_CONFIG'
-{
-  "logs": {
-    "logs_collected": {
-      "files": {
-        "collect_list": [
-          {
-            "file_path": "/var/log/azdevops-agent-init.log",
-            "log_group_name": "${cloudwatch_log_group_name}",
-            "log_stream_name": "{instance_id}/azdevops-agent-init.log",
-            "timezone": "UTC"
-          },
-          {
-            "file_path": "/var/log/syslog",
-            "log_group_name": "${cloudwatch_log_group_name}",
-            "log_stream_name": "{instance_id}/syslog",
-            "timezone": "UTC"
-          }
-        ]
-      }
-    }
-  }
-}
-CLOUDWATCH_CONFIG
-  
-  # Start CloudWatch agent
-  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-    -a fetch-config \
-    -m ec2 \
-    -s \
-    -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
-  
-  echo "CloudWatch Agent installed and configured"
-fi
-
 AGENT_START_SCRIPT
 
 chmod +x /usr/local/bin/start_azdevops_agent.sh
@@ -335,6 +292,48 @@ CRON_MONITOR
 # Reload systemd
 echo "Reloading systemd..."
 systemctl daemon-reload
+
+# Install and configure CloudWatch Agent if centralized logging is enabled
+if [ "${enable_centralized_logging}" = "true" ]; then
+  echo "Installing Amazon CloudWatch Agent for centralized logging..."
+  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+  dpkg -i amazon-cloudwatch-agent.deb
+  
+  # Create CloudWatch agent configuration
+  cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << EOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/azdevops-agent-init.log",
+            "log_group_name": "${cloudwatch_log_group_name}",
+            "log_stream_name": "{instance_id}/azdevops-agent-init.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "${cloudwatch_log_group_name}",
+            "log_stream_name": "{instance_id}/syslog",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+  
+  # Start CloudWatch agent
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
+  
+  echo "CloudWatch Agent installed and configured"
+fi
 
 # Start agent
 echo "Starting Azure DevOps agent..."

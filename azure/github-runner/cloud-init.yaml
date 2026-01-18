@@ -123,35 +123,39 @@ write_files:
           docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
         fi
         
-        # Build docker run command dynamically
-        DOCKER_CMD="docker run --privileged --tty --detach --cpus=\"$${MAX_CPU}\""
-        DOCKER_CMD="$DOCKER_CMD -e GITHUB_URL=\"$GITHUB_URL\""
-        DOCKER_CMD="$DOCKER_CMD -e GITHUB_TOKEN=\"$GITHUB_TOKEN\""
-        DOCKER_CMD="$DOCKER_CMD -e RUNNER_NAME=\"$RUNNER_NAME\""
-        DOCKER_CMD="$DOCKER_CMD -e RUNNER_LABELS=\"$RUNNER_LABELS\""
-        DOCKER_CMD="$DOCKER_CMD -e RUNNER_WORK_DIRECTORY=\"/_work\""
+        # Build docker run command safely using an array
+        DOCKER_ARGS=(
+          --privileged --tty --detach --cpus="$${MAX_CPU}"
+          -e GITHUB_URL="$GITHUB_URL"
+          -e GITHUB_TOKEN="$GITHUB_TOKEN"
+          -e RUNNER_NAME="$RUNNER_NAME"
+          -e RUNNER_LABELS="$RUNNER_LABELS"
+          -e RUNNER_WORK_DIRECTORY="/_work"
+        )
         
         # Add cache configuration if enabled
         if [ "$ENABLE_CACHE" = "true" ]; then
           echo "  Enabling Azure Blob Storage cache"
-          DOCKER_CMD="$DOCKER_CMD -e ACTIONS_CACHE_URL=\"https://$${CACHE_STORAGE_ACCOUNT}.blob.core.windows.net/$${CACHE_CONTAINER}\""
-          DOCKER_CMD="$DOCKER_CMD -e ACTIONS_RUNTIME_TOKEN=\"$${CACHE_STORAGE_KEY}\""
+          DOCKER_ARGS+=(-e "ACTIONS_CACHE_URL=https://$${CACHE_STORAGE_ACCOUNT}.blob.core.windows.net/$${CACHE_CONTAINER}")
+          DOCKER_ARGS+=(-e "ACTIONS_RUNTIME_TOKEN=$${CACHE_STORAGE_KEY}")
         fi
         
         # Add monitoring configuration if enabled
         if [ "$ENABLE_MONITORING" = "true" ]; then
           echo "  Enabling metrics on port $METRICS_PORT"
-          DOCKER_CMD="$DOCKER_CMD -p $METRICS_PORT:$METRICS_PORT"
+          DOCKER_ARGS+=(-p "$METRICS_PORT:$METRICS_PORT")
         fi
         
-        DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
-        DOCKER_CMD="$DOCKER_CMD -v \"$WORK_DIR\":/_work"
-        DOCKER_CMD="$DOCKER_CMD --restart unless-stopped"
-        DOCKER_CMD="$DOCKER_CMD --name \"$CONTAINER_NAME\""
-        DOCKER_CMD="$DOCKER_CMD \"$DOCKER_IMAGE\""
+        DOCKER_ARGS+=(
+          -v /var/run/docker.sock:/var/run/docker.sock
+          -v "$WORK_DIR":/_work
+          --restart unless-stopped
+          --name "$CONTAINER_NAME"
+          "$DOCKER_IMAGE"
+        )
         
         # Execute docker run
-        eval "$DOCKER_CMD"
+        docker run "$${DOCKER_ARGS[@]}"
         
         echo "  Container $CONTAINER_NAME started successfully"
       done

@@ -48,7 +48,7 @@ tags = {
 # cache_s3_bucket_name     = "mycompany-azdevops-cache"  # Must be globally unique
 # cache_s3_region          = "us-east-1"                  # Same as aws_region recommended
 # cache_s3_prefix          = "cache/"
-# cache_shared             = "true"                       # "true" = shared across agents
+# cache_shared             = true                         # true = shared across agents, false = per-agent cache
 
 # ---------- Centralized Logging (CloudWatch) ----------
 # Send agent logs to CloudWatch for centralized log management

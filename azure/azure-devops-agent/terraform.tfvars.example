@@ -52,7 +52,7 @@ tags = {
 # enable_distributed_cache        = true
 # cache_storage_account_name      = "mydevopscache"      # Must be globally unique, 3-24 chars, lowercase/numbers only
 # cache_storage_container_name    = "agent-cache"
-# cache_shared                    = "true"               # "true" = shared across agents, "false" = per-agent cache
+# cache_shared                    = true                 # true = shared across agents, false = per-agent cache
 
 # ---------- Centralized Logging (Azure Log Analytics) ----------
 # Send agent logs to Azure Monitor for centralized log management

@@ -502,7 +502,18 @@ variable "enable_distributed_cache" {
 }
 
 variable "cache_storage_account_name" {
-  description = "Name of the Azure Storage Account for distributed caching (required if enable_distributed_cache = true)"
+  description = <<-EOT
+    Name of the Azure Storage Account for distributed caching.
+    
+    **Requirements:**
+    - Must be globally unique across all Azure accounts
+    - 3-24 characters, lowercase letters and numbers only
+    - No hyphens or special characters allowed
+    
+    **Example:** "mycompanyazdevopscache"
+    
+    **Required when:** enable_distributed_cache = true
+  EOT
   type        = string
   default     = ""
 
@@ -513,13 +524,36 @@ variable "cache_storage_account_name" {
 }
 
 variable "cache_storage_container_name" {
-  description = "Name of the blob container for caching"
+  description = <<-EOT
+    Name of the blob container within the storage account for caching.
+    
+    **Use Cases:**
+    - Separate containers per environment: "prod-cache", "dev-cache"
+    - Separate by team: "team-backend-cache", "team-frontend-cache"
+    - Share across organization: "agent-cache"
+    
+    **Default:** "agent-cache"
+  EOT
   type        = string
   default     = "agent-cache"
 }
 
 variable "cache_storage_account_key" {
-  description = "Storage account access key for authentication (required if enable_distributed_cache = true)"
+  description = <<-EOT
+    Storage account access key for authentication to the cache storage.
+    
+    **Security:**
+    - Marked as sensitive (won't appear in logs)
+    - Use Azure Key Vault for production deployments
+    - Rotate keys regularly
+    
+    **How to obtain:**
+    1. Go to Azure Portal → Storage Accounts → Your account
+    2. Click "Access keys" under Security + networking
+    3. Copy key1 or key2
+    
+    **Required when:** enable_distributed_cache = true
+  EOT
   type        = string
   default     = ""
   sensitive   = true
@@ -531,7 +565,22 @@ variable "cache_storage_account_key" {
 }
 
 variable "cache_shared" {
-  description = "Share cache between all agents (true) vs per-agent caching (false)"
+  description = <<-EOT
+    Enable cache sharing across all agents.
+    
+    **Options:**
+    - true: All agents share the same cache (recommended for teams)
+    - false: Each agent has its own isolated cache
+    
+    **Benefits of shared cache:**
+    - ✓ Better cache hit rate
+    - ✓ Faster build times for teams
+    - ✓ Reduced bandwidth usage
+    
+    **Recommendation:** true (faster builds, better cache hit rate)
+    
+    **Default:** true
+  EOT
   type        = bool
   default     = true
 }
