@@ -56,13 +56,23 @@ Choose the runner that matches your CI/CD platform:
 ✅ **Enhanced Security** - IMDSv2, encrypted disks, least privilege IAM  
 ✅ **Comprehensive Testing** - Automated Terraform tests included
 
+### Custom Docker Images 🐳 NEW
+
+✅ **Multi-Architecture Support** - x86-64 (AMD64) and ARM64 (Graviton, Ampere Altra)  
+✅ **Multiple Image Variants** - Minimal, language-specific, cloud-native, and full toolchain  
+✅ **Cost-Optimized Images** - Choose the right capabilities for your workload  
+✅ **Production-Ready** - Security-scanned, signed, and regularly updated  
+
+📦 **See [DOCKER_IMAGES.md](DOCKER_IMAGES.md) for complete image documentation, variant comparison, and cost analysis.**
+
 📐 **See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture diagrams and explanations.**
 
 ## Documentation
 
 - 📐 **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture diagrams and explanations with Mermaid diagrams
 - 🚀 **[QUICKSTART.md](QUICKSTART.md)** - Quick deployment guide with examples
-- 🔒 **[SECURITY.md](SECURITY.md)** - Security best practices and default configurations
+- � **[DOCKER_IMAGES.md](DOCKER_IMAGES.md)** - Docker image variants, multi-arch support, and cost comparison
+- �🔒 **[SECURITY.md](SECURITY.md)** - Security best practices and default configurations
 - 🧪 **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Manual testing procedures and validation
 - ⚙️ **[docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md)** - Automated test framework documentation
 

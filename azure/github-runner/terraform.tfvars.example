@@ -9,6 +9,22 @@ github_token = "your-registration-token-here"           # Get from GitHub: Setti
 runner_labels = "self-hosted,linux,x64,azure,spot"
 
 # VM Configuration
+# ============================================================================
+# ARM64 (Ampere Altra) instances offer up to 50% cost savings vs x86-64
+# See DOCKER_IMAGES.md for architecture-specific considerations
+#
+# x86-64 (Intel/AMD):
+#   Standard_D2s_v3    - 2 vCPU, 8GB RAM   ~$24/month spot
+#   Standard_D2as_v4   - 2 vCPU, 8GB RAM   ~$19/month spot (AMD)
+#   Standard_F2s_v2    - 2 vCPU, 4GB RAM   ~$18/month spot (CPU-optimized)
+#
+# ARM64 (Ampere Altra):
+#   Standard_D2ps_v5   - 2 vCPU, 8GB RAM   ~$12/month spot (50% savings!)
+#   Standard_D4ps_v5   - 4 vCPU, 16GB RAM  ~$24/month spot (50% savings!)
+#   Standard_E2ps_v5   - 2 vCPU, 16GB RAM  ~$14/month spot (memory-optimized)
+#
+# All Docker images support both architectures automatically
+# ============================================================================
 vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8 GB RAM
 use_spot_instances = true
 spot_max_price     = -1 # Pay up to on-demand price
@@ -20,7 +36,30 @@ default_instances = 1
 
 # Runner Configuration
 runner_count_per_vm = 0 # 0 = auto-detect based on vCPU count
-docker_image        = "fok666/github-runner:latest"
+
+# Docker Image Configuration
+# ============================================================================
+# See DOCKER_IMAGES.md for complete image variant documentation and cost analysis
+#
+# Available variants:
+#   latest  - Full toolchain (Docker, Node.js, Python, Go, Rust, Cloud tools) ~2.5GB
+#   minimal - Docker + Git only (cost-optimized) ~500MB
+#   node    - Docker + Node.js + npm/yarn ~1.2GB
+#   python  - Docker + Python 3.11 + pip/poetry ~1.1GB
+#   golang  - Docker + Go 1.21 ~1.3GB
+#   cloud   - Docker + AWS CLI + Azure CLI + kubectl ~1.8GB
+#
+# Multi-architecture support: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller images = faster startup + lower storage costs
+#
+# Examples:
+#   "fok666/github-runner:latest"  - Production workloads (full tools)
+#   "fok666/github-runner:minimal" - Cost-optimized (simple builds)
+#   "fok666/github-runner:node"    - JavaScript/TypeScript projects
+#   "fok666/github-runner:cloud"   - Kubernetes/IaC deployments
+#   "fok666/github-runner:1.2.3"   - Pin to specific version (production)
+# ============================================================================
+docker_image = "fok666/github-runner:latest"
 
 # Storage
 os_disk_size_gb = 100
