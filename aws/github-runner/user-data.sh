@@ -80,6 +80,14 @@ RUNNER_LABELS="${runner_labels}"
 RUNNER_COUNT="${runner_count}"
 DOCKER_IMAGE="${runner_docker_image}"
 
+# Production Features Configuration
+ENABLE_CACHE="${enable_distributed_cache}"
+CACHE_S3_BUCKET="${cache_s3_bucket_name}"
+CACHE_S3_REGION="${cache_s3_bucket_region}"
+CACHE_SHARED="${cache_shared}"
+ENABLE_MONITORING="${enable_runner_monitoring}"
+METRICS_PORT="${metrics_port}"
+
 # Auto-detect runner count based on CPU count if runner_count is 0
 if [ "$RUNNER_COUNT" = "0" ]; then
   CPU_COUNT=$(nproc)
@@ -124,21 +132,34 @@ for R in $(seq 1 $RUNNER_COUNT); do
     docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
   fi
   
-  docker run \
-    --privileged \
-    --tty \
-    --detach \
-    --cpus="$${MAX_CPU}" \
-    -e GITHUB_URL="$GITHUB_URL" \
-    -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-    -e RUNNER_NAME="$RUNNER_NAME" \
-    -e RUNNER_LABELS="$RUNNER_LABELS" \
-    -e RUNNER_WORK_DIRECTORY="/_work" \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$WORK_DIR":/_work \
-    --restart unless-stopped \
-    --name "$CONTAINER_NAME" \
-    "$DOCKER_IMAGE"
+  # Build docker run command dynamically
+  DOCKER_CMD="docker run --privileged --tty --detach --cpus=\"$${MAX_CPU}\""
+  DOCKER_CMD="$DOCKER_CMD -e GITHUB_URL=\"$GITHUB_URL\""
+  DOCKER_CMD="$DOCKER_CMD -e GITHUB_TOKEN=\"$GITHUB_TOKEN\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_NAME=\"$RUNNER_NAME\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_LABELS=\"$RUNNER_LABELS\""
+  DOCKER_CMD="$DOCKER_CMD -e RUNNER_WORK_DIRECTORY=\"/_work\""
+  
+  # Add cache configuration if enabled
+  if [ "$ENABLE_CACHE" = "true" ]; then
+    echo "  Enabling S3 cache"
+    DOCKER_CMD="$DOCKER_CMD -e ACTIONS_CACHE_URL=\"https://s3.$${CACHE_S3_REGION}.amazonaws.com/$${CACHE_S3_BUCKET}\""
+  fi
+  
+  # Add monitoring configuration if enabled
+  if [ "$ENABLE_MONITORING" = "true" ]; then
+    echo "  Enabling metrics on port $METRICS_PORT"
+    DOCKER_CMD="$DOCKER_CMD -p $METRICS_PORT:$METRICS_PORT"
+  fi
+  
+  DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
+  DOCKER_CMD="$DOCKER_CMD -v \"$WORK_DIR\":/_work"
+  DOCKER_CMD="$DOCKER_CMD --restart unless-stopped"
+  DOCKER_CMD="$DOCKER_CMD --name \"$CONTAINER_NAME\""
+  DOCKER_CMD="$DOCKER_CMD \"$DOCKER_IMAGE\""
+  
+  # Execute docker run
+  eval "$DOCKER_CMD"
   
   echo "  Container $CONTAINER_NAME started successfully"
 done
@@ -146,6 +167,52 @@ done
 echo "All runners started successfully!"
 RUNEOF
 chmod +x /opt/run-github-runners.sh
+
+# Configure CloudWatch Logs if enabled
+ENABLE_LOGGING="${enable_centralized_logging}"
+if [ "$ENABLE_LOGGING" = "true" ]; then
+  echo "Configuring CloudWatch Logs..."
+  
+  # Install CloudWatch agent
+  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+  dpkg -i -E ./amazon-cloudwatch-agent.deb
+  rm amazon-cloudwatch-agent.deb
+  
+  # Create CloudWatch agent configuration
+  cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << 'CWEOF'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/github-runner-init.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/init",
+            "retention_in_days": ${log_retention_days}
+          },
+          {
+            "file_path": "/var/log/ec2_monitor.log",
+            "log_group_name": "${log_group_name}",
+            "log_stream_name": "{instance_id}/monitor",
+            "retention_in_days": ${log_retention_days}
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+  
+  # Start CloudWatch agent
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
+  
+  echo "CloudWatch Logs configured successfully"
+fi
 
 # Wait for Docker to be fully ready
 sleep 10

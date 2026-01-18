@@ -502,3 +502,246 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+# =============================================================================
+# Production Features - Distributed Caching (Optional)
+# =============================================================================
+
+variable "enable_distributed_cache" {
+  description = <<-EOT
+    Enable distributed caching using S3 for shared cache across ephemeral runners.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ 2-5x faster builds (shared cache across ephemeral runners)
+    - ✓ Consistent performance even when instances are replaced
+    - ✓ Reduces bandwidth and package download costs
+    - ✓ Works with autoscaling and spot instances
+    
+    **Cost Impact:**
+    - S3 storage: ~$0.023/GB/month (Standard)
+    - Typical usage: 10-50 GB = $0.23-$1.15/month
+    - Data transfer out: $0.09/GB (minimal for cache)
+    - Total estimated cost: $2-10/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments with frequent builds
+    - ✓ Large codebases with significant dependencies
+    - ✓ Teams prioritizing build speed
+    
+    **Default:** false (backward compatible)
+    **Requires:** S3 bucket, IAM permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cache_s3_bucket_name" {
+  description = <<-EOT
+    Name of the S3 bucket for distributed caching.
+    
+    **Requirements:**
+    - Bucket must exist before deployment
+    - Must be in the same region as runners
+    - Requires appropriate IAM permissions
+    
+    **Example:** "my-github-runner-cache"
+    
+    **Required if:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_s3_bucket_name != "")
+    error_message = "cache_s3_bucket_name is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_s3_bucket_region" {
+  description = <<-EOT
+    AWS region of the S3 bucket for caching.
+    
+    **Best Practice:** Use same region as runners to minimize latency and costs
+    
+    **Default:** Same as aws_region
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Share cache between all runners vs. per-runner caching.
+    
+    **Shared Cache (true - RECOMMENDED):**
+    - ✓ Better cache hit rate across all runners
+    - ✓ Faster builds for common dependencies
+    - ✓ Lower storage costs
+    - ⚠️ Requires careful cache key management
+    
+    **Per-Runner Cache (false):**
+    - ✓ Isolated cache per runner
+    - ✓ Better for different workloads
+    - ⚠️ Higher storage costs
+    - ⚠️ Lower cache hit rate
+    
+    **Default:** true (shared cache)
+  EOT
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# Production Features - Centralized Logging (Optional)
+# =============================================================================
+
+variable "enable_centralized_logging" {
+  description = <<-EOT
+    Enable centralized logging using CloudWatch for runner logs and job output.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Essential for troubleshooting ephemeral runners
+    - ✓ Long-term log retention (30-365 days)
+    - ✓ Advanced search and filtering
+    - ✓ Integration with CloudWatch Insights
+    - ✓ Alerting on errors and anomalies
+    
+    **Cost Impact:**
+    - CloudWatch Logs ingestion: ~$0.50/GB
+    - CloudWatch Logs storage: ~$0.03/GB/month
+    - Typical usage: 5-20 GB/month = $2.65-$10.60/month
+    - Total estimated cost: $5-20/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments requiring audit trail
+    - ✓ Compliance requirements (SOC2, ISO27001)
+    - ✓ Teams needing advanced troubleshooting
+    - ✓ Large teams with many concurrent jobs
+    
+    **Default:** false (backward compatible)
+    **Requires:** CloudWatch log group, IAM permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "log_group_name" {
+  description = <<-EOT
+    CloudWatch log group name for runner logs.
+    
+    **Best Practice:** Use descriptive name like "/aws/github-runner/<project-name>"
+    
+    **Example:** "/aws/github-runner/production"
+    
+    **Note:** Log group will be created if it doesn't exist
+    
+    **Default:** "/aws/github-runner" (if enabled)
+  EOT
+  type        = string
+  default     = "/aws/github-runner"
+}
+
+variable "log_retention_days" {
+  description = <<-EOT
+    Number of days to retain logs in CloudWatch.
+    
+    **Common Values:**
+    - 7: One week (testing/development)
+    - 30: One month (RECOMMENDED for production)
+    - 90: Three months (compliance)
+    - 365: One year (strict compliance)
+    - 0: Never expire (not recommended - unlimited cost growth)
+    
+    **Cost Impact:**
+    - 7 days: Minimal storage cost
+    - 30 days: Moderate storage cost (~$1.50-$6/month)
+    - 90 days: Higher storage cost (~$4.50-$18/month)
+    - 365 days: Significant storage cost (~$18-$72/month)
+    
+    **Default:** 30 days (balanced cost and retention)
+  EOT
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.log_retention_days)
+    error_message = "log_retention_days must be one of: 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653"
+  }
+}
+
+# =============================================================================
+# Production Features - Runner Monitoring (Optional)
+# =============================================================================
+
+variable "enable_runner_monitoring" {
+  description = <<-EOT
+    Enable Prometheus metrics endpoint for runner monitoring and observability.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Track job success rate, duration, queue depth
+    - ✓ Monitor runner health and performance
+    - ✓ Integration with CloudWatch, Grafana, Datadog
+    - ✓ Proactive alerting on issues
+    - ✓ Capacity planning insights
+    
+    **Cost Impact:**
+    - CloudWatch Metrics: ~$0.30/metric/month
+    - Typical usage: 10-30 custom metrics = $3-9/month
+    - Total estimated cost: Minimal (included in infrastructure)
+    
+    **When to Enable:**
+    - ✓ Production deployments
+    - ✓ Teams requiring SLA tracking
+    - ✓ Organizations with existing monitoring stack
+    
+    **Default:** false (backward compatible)
+    **Requires:** Security group rule for metrics port
+    **See:** PRODUCTION_FEATURES.md for Grafana integration
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "metrics_port" {
+  description = <<-EOT
+    Port for Prometheus metrics endpoint.
+    
+    **Default:** 9090 (Prometheus standard port)
+    
+    **Security:** Ensure this port is only accessible from your monitoring infrastructure
+  EOT
+  type        = number
+  default     = 9090
+
+  validation {
+    condition     = var.metrics_port >= 1024 && var.metrics_port <= 65535
+    error_message = "metrics_port must be between 1024 and 65535"
+  }
+}
+
+variable "metrics_allowed_cidr_blocks" {
+  description = <<-EOT
+    CIDR blocks allowed to access Prometheus metrics endpoint.
+    
+    **Security Best Practice:** Restrict to monitoring infrastructure only
+    
+    **Example:** ["10.0.0.0/16"] (VPC CIDR only)
+    
+    **Required if:** enable_runner_monitoring = true
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = !var.enable_runner_monitoring || (var.enable_runner_monitoring && length(var.metrics_allowed_cidr_blocks) > 0)
+    error_message = "metrics_allowed_cidr_blocks is required when enable_runner_monitoring is true"
+  }
+}
