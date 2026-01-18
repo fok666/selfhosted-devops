@@ -219,64 +219,10 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-  documentation-check:
-    name: Check Documentation
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check for required documentation files
-        run: |
-          echo "Checking for required documentation files..."
-          
-          required_files="README.md QUICKSTART.md TESTING_GUIDE.md"
-          missing_files=""
-          
-          for file in $required_files; do
-            if [ ! -f "$file" ]; then
-              missing_files="$missing_files $file"
-            fi
-          done
-          
-          if [ -n "$missing_files" ]; then
-            echo "❌ Missing required documentation files:"
-            echo "$missing_files"
-            exit 1
-          fi
-          
-          echo "✅ All required documentation files are present"
-
-      - name: Check for README in subdirectories
-        run: |
-          echo "Checking for README files in main directories..."
-          
-          dirs="aws azure modules"
-          warnings=0
-          
-          for dir in $dirs; do
-            if [ -d "$dir" ]; then
-              subdirs=$(find "$dir" -mindepth 1 -maxdepth 1 -type d)
-              for subdir in $subdirs; do
-                if [ ! -f "$subdir/README.md" ]; then
-                  echo "⚠️  Missing README.md in $subdir"
-                  warnings=$((warnings + 1))
-                fi
-              done
-            fi
-          done
-          
-          if [ $warnings -gt 0 ]; then
-            echo "⚠️  Found $warnings directories without README files"
-          else
-            echo "✅ All subdirectories have README files"
-          fi
-
   summary:
     name: Validation Summary
     runs-on: ubuntu-latest
-    needs: [terraform-validation, terraform-test, terraform-lint, security-scan, documentation-check]
+    needs: [terraform-validation, terraform-test, terraform-lint, security-scan]
     if: always()
     
     steps:
@@ -290,7 +236,8 @@ jobs:
           echo "| Terraform Tests | ${{ needs.terraform-test.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Terraform Lint | ${{ needs.terraform-lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Scan | ${{ needs.security-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Documentation Check | ${{ needs.documentation-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Documentation checks run in separate Documentation workflow" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.terraform-validation.result }}" != "success" ] || [ "${{ needs.terraform-test.result }}" != "success" ]; then
             echo "❌ Terraform validation or tests failed"

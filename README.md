@@ -2,13 +2,34 @@
 
 Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI/CD runners on Azure and AWS.
 
-[![CodeQL](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql) [![Dependabot Updates](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates) [![Terraform Validation](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml)
+[![CodeQL](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql)
+[![Dependabot Updates](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates)
+[![Pre-commit Checks](https://github.com/fok666/selfhosted-devops/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/pre-commit.yml)
+[![Terraform Validation](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml)
+[![Documentation](https://github.com/fok666/selfhosted-devops/actions/workflows/documentation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/documentation.yml)
 
 ## Supported Runners
 
-- **GitLab Runner** - [fok666/gitlab-selfhosted-runner](https://github.com/fok666/gitlab-selfhosted-runner)
-- **GitHub Actions Runner** - [fok666/github-selfhosted-runner](https://github.com/fok666/github-selfhosted-runner)
-- **Azure DevOps Agent** - [fok666/azure-devops-agent](https://github.com/fok666/azure-devops-agent)
+Choose the runner that matches your CI/CD platform:
+
+| Platform | Status | Azure | AWS | Best For |
+|----------|--------|-------|-----|----------|
+| **[GitLab Runner](https://github.com/fok666/gitlab-selfhosted-runner)** | ✅ Production | ✅ | ✅ | GitLab CI/CD pipelines |
+| **[GitHub Actions](https://github.com/fok666/github-selfhosted-runner)** | ✅ Production | ✅ | ✅ | GitHub repositories |
+| **[Azure DevOps Agent](https://github.com/fok666/azure-devops-agent)** | ✅ Production | ✅ | ✅ | Microsoft ecosystem |
+
+### Platform Comparison
+
+| Feature | GitLab Runner | GitHub Actions | Azure DevOps |
+|---------|---------------|----------------|--------------|
+| **Registration** | Token (glrt-) | PAT + URL | PAT + Pool |
+| **Setup Difficulty** | ⭐⭐ Easy | ⭐⭐ Easy | ⭐⭐⭐ Moderate |
+| **Docker Support** | ✅ Native | ✅ Native | ✅ Native |
+| **Concurrent Jobs** | ✅ Unlimited | ✅ Unlimited | ✅ Unlimited |
+| **Autoscaling** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Cost Optimization** | ✅ Spot instances | ✅ Spot instances | ✅ Spot instances |
+
+**New to self-hosted runners?** Start with GitLab Runner - it's the easiest to set up and test.
 
 ## Features
 
@@ -49,18 +70,76 @@ Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI
 ├── modules/                    # Shared Terraform modules
 │   ├── azure-vmss/            # Azure VMSS module
 │   └── aws-asg/               # AWS Auto Scaling Group module
-├── docs/                       # Documentation
-│   └── TERRAFORM_TESTING.md   # Test framework guide
-└── examples/                   # Usage examples and configurations
+├── examples/                   # 🆕 Preset configurations
+│   ├── minimal/               # Testing, learning ($5-20/mo)
+│   ├── development/           # Small teams ($40-80/mo)
+│   ├── production/            # Business-critical ($150-300/mo)
+│   └── high-performance/      # Enterprise ($500-1000/mo)
+├── scripts/                    # 🆕 Helper scripts
+│   ├── quick-deploy.sh        # Interactive deployment wizard
+│   ├── validate-prerequisites.sh  # Prerequisites checker
+│   └── run-tests.sh           # Test runner
+└── docs/                       # Documentation
+    └── TERRAFORM_TESTING.md   # Test framework guide
 ```
 
+**New to this project?** Check [`examples/`](examples/) for ready-to-use configurations!
+
 ## Quick Start
+
+### 🚀 Three Ways to Get Started
+
+#### 1. Interactive Deployment (Easiest - 5 minutes)
+Perfect for first-time users:
+```bash
+./scripts/quick-deploy.sh
+```
+Guided wizard that does everything for you!
+
+#### 2. Use Preset Configurations (Recommended - 10 minutes)
+Choose a proven configuration and deploy:
+```bash
+# Example: Production GitLab Runner on Azure
+cd azure/gitlab-runner
+cp ../../examples/production/azure-gitlab.tfvars terraform.tfvars
+# Edit 3 required values (project_name, gitlab_url, gitlab_token)
+terraform init && terraform apply
+```
+
+**Available presets in [`examples/`](examples/):**
+- **Minimal** - Testing, learning ($5-20/mo)
+- **Development** - Small teams ($40-80/mo)
+- **Production** - Business-critical ($150-300/mo)
+- **High-Performance** - Enterprise ($500-1000/mo)
+
+See [examples/README.md](examples/README.md) for detailed comparison.
+
+#### 3. Manual Deployment (Advanced - 30 minutes)
+Full control over every setting:
+```bash
+cd azure/gitlab-runner  # or aws/gitlab-runner
+cp terraform.tfvars.example terraform.tfvars
+# Customize all variables
+terraform init && terraform apply
+```
+
+**→ See [QUICKSTART.md](QUICKSTART.md) for detailed instructions**
+
+---
 
 ### Prerequisites
 
 - Terraform >= 1.5.0
 - Azure CLI or AWS CLI (depending on target cloud)
 - Runner registration tokens from your CI/CD platform
+
+**Validate your setup:**
+```bash
+cd azure/gitlab-runner  # or aws/gitlab-runner
+bash ../../scripts/validate-prerequisites.sh
+```
+
+---
 
 ### Azure Deployment
 
@@ -132,7 +211,68 @@ Defaults are optimized for:
 
 **Important**: Review [SECURITY.md](SECURITY.md) before changing any default security settings.
 
-## Cost Optimization
+## Getting Started
+
+### First-Time Users
+
+1. **Read [QUICKSTART.md](QUICKSTART.md)** - Choose your deployment path
+2. **Check [examples/](examples/)** - Browse preset configurations
+3. **Run the validator** - Ensure prerequisites are met:
+   ```bash
+   bash scripts/validate-prerequisites.sh
+   ```
+4. **Deploy!** - Use the interactive wizard or presets
+
+### Experienced Users
+
+1. Copy a preset from [`examples/`](examples/) that matches your needs
+2. Customize as required
+3. Deploy with Terraform
+
+### Advanced Users
+
+1. Review [ARCHITECTURE.md](ARCHITECTURE.md) for deep dive
+2. Customize modules in `modules/`
+3. Implement advanced patterns (multi-region, custom autoscaling, etc.)
+
+---
+
+## Support & Contributing
+
+- **📖 Documentation:** See individual README files and docs/
+- **🐛 Issues:** [GitHub Issues](https://github.com/fok666/selfhosted-devops/issues)
+- **💬 Discussions:** [GitHub Discussions](https://github.com/fok666/selfhosted-devops/discussions)
+- **🤝 Contributing:** PRs welcome! See project guidelines in [.github/copilot-instructions.md](.github/copilot-instructions.md)
+
+---
+
+## What's New
+
+**🆕 Recent Additions:**
+- ✅ **Examples directory** with preset configurations (Minimal, Development, Production, High-Performance)
+- ✅ **Interactive deployment** script for guided setup
+- ✅ **Prerequisites validator** to check your environment before deploy
+- ✅ **Improved QUICKSTART** with decision wizard and troubleshooting
+- ✅ **Platform comparison** matrix to help choose the right runner
+
+---
+
+## Cost Estimator
+
+| Configuration | Azure Monthly | AWS Monthly | Annual Savings with Spot |
+|--------------|---------------|-------------|--------------------------|
+| **Minimal** (scale-to-zero) | $5-20 | $3-15 | ~$600-800 |
+| **Development** (1-3 runners) | $40-80 | $35-70 | ~$2,000-3,000 |
+| **Production** (2-10 runners) | $150-300 | $120-250 | ~$8,000-12,000 |
+| **High-Performance** (5-20 runners) | $500-1000 | $400-800 | ~$25,000-35,000 |
+
+*Estimates assume spot instances and autoscaling. Actual costs vary by region and usage.*
+
+**💡 Tip:** Start with Minimal configuration, monitor for 2 weeks, then upgrade if needed.
+
+---
+
+## License
 
 This infrastructure is designed for **maximum cost efficiency**:
 
