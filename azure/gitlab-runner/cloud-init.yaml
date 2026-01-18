@@ -145,20 +145,20 @@ write_files:
         # Add cache configuration if enabled
         if [ "$ENABLE_CACHE" = "true" ]; then
           echo "  Configuring distributed cache (Azure Blob Storage)..."
-          DOCKER_ARGS+=(-e "CACHE_TYPE=$CACHE_TYPE")
-          DOCKER_ARGS+=(-e "CACHE_SHARED=$CACHE_SHARED")
-          DOCKER_ARGS+=(-e "CACHE_AZURE_ACCOUNT_NAME=$CACHE_STORAGE_ACCOUNT")
-          DOCKER_ARGS+=(-e "CACHE_AZURE_CONTAINER_NAME=$CACHE_CONTAINER")
+          DOCKER_ARGS+=(-e "CACHE_TYPE=$${CACHE_TYPE}")
+          DOCKER_ARGS+=(-e "CACHE_SHARED=$${CACHE_SHARED}")
+          DOCKER_ARGS+=(-e "CACHE_AZURE_ACCOUNT_NAME=$${CACHE_STORAGE_ACCOUNT}")
+          DOCKER_ARGS+=(-e "CACHE_AZURE_CONTAINER_NAME=$${CACHE_CONTAINER}")
           
-          if [ -n "$CACHE_ACCESS_KEY" ]; then
-            DOCKER_ARGS+=(-e "CACHE_AZURE_ACCESS_KEY=$CACHE_ACCESS_KEY")
+          if [ -n "$${CACHE_ACCESS_KEY}" ]; then
+            DOCKER_ARGS+=(-e "CACHE_AZURE_ACCESS_KEY=$${CACHE_ACCESS_KEY}")
           fi
         fi
         
         # Add monitoring configuration if enabled
         if [ "$ENABLE_MONITORING" = "true" ]; then
-          echo "  Enabling Prometheus metrics on port $METRICS_PORT..."
-          DOCKER_ARGS+=(-p "$METRICS_PORT:9252")
+          echo "  Enabling Prometheus metrics on port $${METRICS_PORT}..."
+          DOCKER_ARGS+=(-p "$${METRICS_PORT}:9252")
         fi
         
         # Add volume mounts and finish
@@ -191,17 +191,17 @@ write_files:
           
           if [ -f "$CONFIG_FILE" ]; then
             # Append cache configuration to config.toml
-            cat >> "$CONFIG_FILE" << CACHEEOF
+            cat >> "$${CONFIG_FILE}" << CACHEEOF
 
 [[runners.cache]]
-  Type = "$CACHE_TYPE"
-  Shared = $CACHE_SHARED
+  Type = "$${CACHE_TYPE}"
+  Shared = $${CACHE_SHARED}
   [runners.cache.azure]
-    AccountName = "$CACHE_STORAGE_ACCOUNT"
-    ContainerName = "$CACHE_CONTAINER"
+    AccountName = "$${CACHE_STORAGE_ACCOUNT}"
+    ContainerName = "$${CACHE_CONTAINER}"
     StorageDomain = "blob.core.windows.net"
 CACHEEOF
-            echo "  Cache configuration added to $CONFIG_FILE"
+            echo "  Cache configuration added to $${CONFIG_FILE}"
           fi
         done
       fi
