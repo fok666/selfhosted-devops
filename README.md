@@ -71,7 +71,7 @@ Choose the runner that matches your CI/CD platform:
 
 - 📐 **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture diagrams and explanations with Mermaid diagrams
 - 🚀 **[QUICKSTART.md](QUICKSTART.md)** - Quick deployment guide with examples
-- � **[DOCKER_IMAGES.md](DOCKER_IMAGES.md)** - Docker image variants, multi-arch support, and cost comparison
+- 📦 **[DOCKER_IMAGES.md](DOCKER_IMAGES.md)** - Docker image variants, multi-arch support, and cost comparison
 - �🔒 **[SECURITY.md](SECURITY.md)** - Security best practices and default configurations
 - 🧪 **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Manual testing procedures and validation
 - ⚙️ **[docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md)** - Automated test framework documentation

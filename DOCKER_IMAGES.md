@@ -380,4 +380,4 @@ For issues or feature requests:
 - [QUICKSTART.md](QUICKSTART.md) - Getting started guide
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture overview
 - [SECURITY.md](SECURITY.md) - Security best practices
-- [terraform.tfvars.example](*/terraform.tfvars.example) - Configuration examples
+- Configuration examples can be found in the `terraform.tfvars.example` file within each platform's directory (e.g., `aws/github-runner/`, `azure/gitlab-runner/`)
