@@ -173,6 +173,7 @@ RUNEOF
 chmod +x /opt/run-github-runners.sh
 
 # Configure CloudWatch Logs if enabled
+# shellcheck disable=SC2154  # enable_centralized_logging is injected by Terraform templatefile()
 ENABLE_LOGGING="${enable_centralized_logging}"
 if [ "$ENABLE_LOGGING" = "true" ]; then
   echo "Configuring CloudWatch Logs..."
