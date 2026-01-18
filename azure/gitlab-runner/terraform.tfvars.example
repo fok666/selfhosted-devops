@@ -39,25 +39,25 @@ runner_count_per_vm = 0 # 0 = auto-detect based on vCPU count
 
 # Docker Image Configuration
 # ============================================================================
-# See DOCKER_IMAGES.md for complete image variant documentation and cost analysis
+# See DOCKER_IMAGES.md for complete profile documentation and cost analysis
 #
-# Available variants:
-#   latest  - Full toolchain (Docker, Node.js, Python, Go, Rust, Cloud tools) ~2.5GB
-#   minimal - Docker + Git only (cost-optimized) ~500MB
-#   node    - Docker + Node.js + npm/yarn ~1.2GB
-#   python  - Docker + Python 3.11 + pip/poetry ~1.1GB
-#   golang  - Docker + Go 1.21 ~1.3GB
-#   cloud   - Docker + AWS CLI + Azure CLI + kubectl ~1.8GB
+# Available profiles:
+#   latest     - Alias for 'full' (production default)
+#   full       - Complete IaC toolchain (Terraform, OpenTofu, Terraspace, cloud CLIs, K8s, PowerShell) ~2.8GB
+#   minimal    - Bare minimum (Git + sudo only, no Docker) ~400MB - ideal for compiled languages
+#   k8s        - Kubernetes tools (kubectl, helm, kustomize, kubelogin) + Docker ~1.5GB
+#   iac        - Infrastructure as Code (Terraform, OpenTofu, Terraspace, cloud CLIs) + Docker ~2.0GB
+#   iac-pwsh   - IaC + PowerShell (adds Azure/AWS PowerShell modules) ~2.3GB
 #
-# Multi-architecture support: Both x86-64 and ARM64 automatically detected
-# Cost impact: Smaller images = faster startup + lower storage costs
+# Multi-architecture: Both x86-64 and ARM64 automatically detected
+# Cost impact: Smaller profiles = faster startup + lower storage costs
 #
-# Examples:
-#   "fok666/gitlab-runner:latest"  - Production workloads (full tools)
-#   "fok666/gitlab-runner:minimal" - Cost-optimized (simple builds)
-#   "fok666/gitlab-runner:node"    - JavaScript/TypeScript projects
-#   "fok666/gitlab-runner:cloud"   - Kubernetes/IaC deployments
-#   "fok666/gitlab-runner:1.2.3"   - Pin to specific version (production)
+# Examples by use case:
+#   "fok666/gitlab-runner:full"     - Production (comprehensive tooling)
+#   "fok666/gitlab-runner:minimal"  - Cost-optimized (simple builds, Go/Rust projects)
+#   "fok666/gitlab-runner:k8s"      - Kubernetes deployments and GitOps
+#   "fok666/gitlab-runner:iac"      - Terraform/OpenTofu without PowerShell
+#   "fok666/gitlab-runner:iac-pwsh" - Terraform/OpenTofu with PowerShell automation
 # ============================================================================
 docker_image = "fok666/gitlab-runner:latest"
 
