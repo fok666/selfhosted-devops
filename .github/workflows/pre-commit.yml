@@ -26,7 +26,19 @@ jobs:
       - name: Install pre-commit
         run: pip install pre-commit
 
-      - name: Run pre-commit on all files
+      - name: Check for existing pre-commit config
+        id: check-config
+        run: |
+          if [ -f ".pre-commit-config.yaml" ]; then
+            echo "config_exists=true" >> $GITHUB_OUTPUT
+            echo "ℹ️  Using existing .pre-commit-config.yaml"
+          else
+            echo "config_exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  Will create temporary .pre-commit-config.yaml"
+          fi
+
+      - name: Create temporary pre-commit config
+        if: steps.check-config.outputs.config_exists == 'false'
         run: |
           cat > .pre-commit-config.yaml << 'EOF'
           repos:
@@ -53,8 +65,9 @@ jobs:
                     - --hook-config=--add-to-existing-file=true
                     - --hook-config=--create-file-if-not-exist=true
           EOF
-          
-          pre-commit run --all-files --show-diff-on-failure || true
+
+      - name: Run pre-commit on all files
+        run: pre-commit run --all-files --show-diff-on-failure || true
 
   shellcheck:
     name: Shellcheck
