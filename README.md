@@ -4,8 +4,8 @@ Terraform infrastructure for deploying autoscaling, ephemeral, cost-optimized CI
 
 [![CodeQL](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/github-code-scanning/codeql)
 [![Dependabot Updates](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/dependabot/dependabot-updates)
-[![Terraform Validation](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml)
 [![Pre-commit Checks](https://github.com/fok666/selfhosted-devops/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/pre-commit.yml)
+[![Terraform Validation](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/terraform-validation.yml)
 [![Documentation](https://github.com/fok666/selfhosted-devops/actions/workflows/documentation.yml/badge.svg)](https://github.com/fok666/selfhosted-devops/actions/workflows/documentation.yml)
 
 ## Supported Runners
