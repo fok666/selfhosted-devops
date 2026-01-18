@@ -1,427 +1,309 @@
-# Production Testing Guide
+# Testing Guide
 
 ## Overview
 
-This guide provides comprehensive testing procedures for validating self-hosted DevOps runner infrastructure before production deployment.
+Validation procedures for self-hosted runner infrastructure.
 
-**✅ Automated Testing**: All GitLab Runner implementations include automated Terraform tests. See [TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md) for details on the native Terraform test framework.
+**Automated Testing:** See [docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.md) for Terraform native test framework details.
 
-## Testing Environment Requirements
+## Prerequisites
 
-### Prerequisites
 - Terraform >= 1.5.0
-- Azure CLI (for Azure deployments)
-- AWS CLI (for AWS deployments)
-- Docker (for local testing)
-- jq (for JSON parsing)
+- Cloud CLI authenticated
 - Test CI/CD account with permissions
+- Docker (for local testing)
 
-## Test Levels
+## Test Types
 
-### 1. Syntax & Configuration Testing
+### 1. Configuration Validation
 
-#### Terraform Validation
 ```bash
-# Test all modules
+# Validate all modules
 for dir in modules/*/; do
-  echo "Testing $dir"
-  cd "$dir"
-  terraform init
-  terraform validate
-  cd - > /dev/null
+  cd "$dir" && terraform init -backend=false && terraform validate && cd - > /dev/null
 done
 
-# Test all implementations
+# Validate implementations
 for dir in azure/*/ aws/*/; do
-  echo "Testing $dir"
-  cd "$dir"
-  terraform init
-  terraform validate
-  cd - > /dev/null
+  cd "$dir" && terraform init -backend=false && terraform validate && cd - > /dev/null
 done
+
+# Or use script
+./scripts/run-tests.sh
 ```
 
-#### Expected Output
-```
-Success! The configuration is valid.
-```
+### 2. Module Unit Tests
 
-### 2. Unit Testing
-
-#### Module Testing
 ```bash
-# Test Azure VMSS module
-cd modules/azure-vmss
-terraform init
-terraform validate
-terraform fmt -check
-
-# Test AWS ASG module
+# Test specific module
 cd modules/aws-asg
-terraform init
-terraform validate
-terraform fmt -check
+terraform init -backend=false
+terraform test
+
+# Test with coverage
+cd modules/azure-vmss
+terraform init -backend=false
+terraform test
 ```
 
 ### 3. Integration Testing
 
-#### Test Deployment Workflow
+#### Deploy Test Environment
 
-**Step 1: Deploy to Test Environment**
 ```bash
-cd azure/gitlab-runner  # or any implementation
+cd azure/gitlab-runner  # or aws/gitlab-runner
 
-# Create test tfvars
+# Minimal test configuration
 cat > terraform.tfvars << EOF
 project_name          = "test-runner"
-location              = "East US"
 gitlab_url            = "https://gitlab.com"
 gitlab_token          = "$GITLAB_TEST_TOKEN"
-
-# Use defaults optimized for cost
 use_spot_instances    = true
 min_instances         = 0
 max_instances         = 2
-default_instances     = 1
-
-# Defaults (can be omitted, shown for reference)
-# vm_sku                    = "Standard_D2s_v3"
-# os_disk_size_gb           = 64
-# os_disk_type              = "StandardSSD_LRS"
-# runner_count_per_instance = 0  # Auto-detect
-# vnet_address_space        = "10.0.0.0/16"
 EOF
 
-# Deploy
 terraform init
 terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-**Step 2: Verify Runner Registration**
+#### Verify Deployment
+
+**Check instances:**
 ```bash
-# Wait for deployment
-sleep 180
+# Azure
+az vmss list-instances --resource-group test-runner-rg --name test-runner-vmss --output table
 
-# Check GitLab/GitHub/Azure DevOps for registered runners
-# Azure: Check VMSS instances
-az vmss list-instances \
-  --resource-group test-runner-rg \
-  --name test-runner-gitlab-runner \
-  --output table
-
-# AWS: Check ASG instances
-aws autoscaling describe-auto-scaling-instances \
-  --output table
+# AWS
+aws autoscaling describe-auto-scaling-instances --output table
 ```
 
-**Step 3: Test CI/CD Job Execution**
+**Check runner registration:**
+- GitLab: Settings → CI/CD → Runners
+- GitHub: Settings → Actions → Runners
+- Azure DevOps: Organization Settings → Agent pools
+
+#### Test Job Execution
+
+**GitLab (.gitlab-ci.yml):**
 ```yaml
-# .gitlab-ci.yml (for GitLab)
 test-job:
-  tags:
-    - docker
-    - linux
+  tags: [docker, linux]
   script:
-    - echo "Testing self-hosted runner"
+    - echo "Testing runner"
     - docker --version
-    - uname -a
     - nproc
 ```
 
+**GitHub (.github/workflows/test.yml):**
 ```yaml
-# .github/workflows/test.yml (for GitHub)
-name: Test Self-Hosted Runner
+name: Test Runner
 on: [push]
 jobs:
   test:
     runs-on: [self-hosted, linux, x64]
     steps:
-      - name: Test runner
-        run: |
-          echo "Testing self-hosted runner"
+      - run: |
+          echo "Testing runner"
           docker --version
-          uname -a
           nproc
 ```
 
-**Step 4: Test Autoscaling**
-```bash
-# Trigger multiple jobs simultaneously
-for i in {1..5}; do
-  # Trigger CI/CD job
-  echo "Triggering job $i"
-done
+#### Test Autoscaling
 
-# Watch scaling
-watch -n 10 'az vmss list-instances --resource-group test-runner-rg --name test-runner-gitlab-runner --output table'
-# or
-watch -n 10 'aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names test-runner-gitlab-runner --query "AutoScalingGroups[0].Instances" --output table'
+```bash
+# Trigger multiple jobs, monitor scaling
+watch -n 10 'az vmss list-instances --resource-group test-runner-rg --name test-runner-vmss --output table'
+
+# Or AWS
+watch -n 10 'aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names test-runner-asg'
 ```
 
-**Step 5: Test Scale to Zero**
-```bash
-# Wait for jobs to complete
-# Wait 15-20 minutes
+#### Test Scale-to-Zero
 
-# Verify instances terminate
-az vmss list-instances \
-  --resource-group test-runner-rg \
-  --name test-runner-gitlab-runner \
-  --output table | wc -l
+Wait 15-20 minutes after jobs complete, verify instances terminate:
+
+```bash
+# Azure
+az vmss list-instances --resource-group test-runner-rg --name test-runner-vmss --output table
+
+# AWS
+aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names test-runner-asg --query "AutoScalingGroups[0].Instances"
 ```
 
-**Step 6: Test Spot Termination**
-```bash
-# SSH into instance
-ssh -i runner-key.pem azureuser@<instance-ip>
+#### Test Spot Termination
 
-# Or AWS Session Manager
+**Azure:**
+```bash
+# Terminate instance, check graceful shutdown
+az vmss delete-instances --resource-group test-runner-rg --name test-runner-vmss --instance-ids 0
+
+# Check logs
+az vmss run-command invoke --resource-group test-runner-rg --name test-runner-vmss \
+  --command-id RunShellScript --scripts "tail -n 50 /var/log/vmss_monitor.log"
+```
+
+**AWS:**
+```bash
+# Terminate via console or CLI
+aws ec2 terminate-instances --instance-ids <instance-id>
+
+# Check logs via Session Manager
 aws ssm start-session --target <instance-id>
-
-# Check monitoring logs
-sudo tail -f /var/log/vmss_monitor.log  # Azure
-sudo tail -f /var/log/ec2_monitor.log   # AWS
-
-# Manually trigger termination (Azure)
-az vmss delete-instances \
-  --resource-group test-runner-rg \
-  --name test-runner-gitlab-runner \
-  --instance-ids 0
-
-# AWS: Terminate spot instance via console
-# Verify graceful shutdown in logs
+sudo tail -f /var/log/spot_monitor.log
 ```
 
-**Step 7: Cleanup**
+#### Cleanup
+
 ```bash
 terraform destroy -auto-approve
 ```
 
-### 4. Security Testing
+## Validation Checklist
 
-#### Network Security Audit
+### Pre-Deployment
+- [ ] Terraform validation passes
+- [ ] Security defaults verified (SSH disabled, encryption enabled)
+- [ ] Cost estimates reviewed
+- [ ] Spot instances configured
+
+### Post-Deployment
+- [ ] Runners register successfully
+- [ ] Test job executes
+- [ ] Autoscaling works (scale up)
+- [ ] Scale-to-zero works (scale down)
+- [ ] Spot termination handles gracefully
+- [ ] Logs accessible
+
+### Production Readiness
+- [ ] Production features configured (cache, logging, monitoring)
+- [ ] Security reviewed (see [SECURITY.md](SECURITY.md))
+- [ ] Monitoring/alerts configured
+- [ ] Documentation updated
+- [ ] Backup/recovery tested
+
+## Common Test Scenarios
+
+### Scenario 1: Job Queue Handling
+
 ```bash
-# Azure: Check NSG rules
-az network nsg show \
-  --resource-group test-runner-rg \
-  --name test-runner-nsg \
-  --query "securityRules[*].{Name:name, Priority:priority, Direction:direction, Access:access}" \
-  --output table
-
-# AWS: Check security group rules
-aws ec2 describe-security-groups \
-  --filters "Name=tag:Name,Values=test-runner-runner-sg" \
-  --query "SecurityGroups[*].{GroupId:GroupId, IpPermissions:IpPermissions}" \
-  --output json
-```
-
-#### IAM/RBAC Audit
-```bash
-# Azure: Check managed identity permissions
-az role assignment list \
-  --assignee <principal-id> \
-  --output table
-
-# AWS: Check IAM role policies
-aws iam list-attached-role-policies \
-  --role-name test-runner-runner-role
-```
-
-#### Secrets Audit
-```bash
-# Ensure no hardcoded secrets
-grep -r "glrt-" . --exclude-dir=.terraform --exclude-dir=.git
-grep -r "ghp_" . --exclude-dir=.terraform --exclude-dir=.git
-grep -r "password" . --exclude-dir=.terraform --exclude-dir=.git
-```
-
-### 5. Performance Testing
-
-#### Startup Time Test
-```bash
-#!/bin/bash
-# test-startup-time.sh
-
-START_TIME=$(date +%s)
-
-# Trigger scale up
-# (trigger CI/CD job)
-
-# Wait for runner to be ready
-while ! curl -s http://runner-endpoint/health > /dev/null; do
-  sleep 5
+# Trigger 10 jobs simultaneously
+for i in {1..10}; do
+  # Trigger job via API or commit
+  echo "Job $i triggered"
 done
 
-END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
-
-echo "Startup time: $DURATION seconds"
+# Expected: Autoscaling adds instances to handle load
+# Verify: Check instance count increases
 ```
 
-#### Load Testing
-```bash
-# Trigger 20 concurrent jobs
-for i in {1..20}; do
-  # Trigger CI/CD job in background
-  curl -X POST "..." &
-done
-
-# Monitor autoscaling
-watch -n 5 'aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names test-runner --query "AutoScalingGroups[0].{Desired:DesiredCapacity,Current:Instances|length(@),Min:MinSize,Max:MaxSize}"'
-```
-
-### 6. Disaster Recovery Testing
-
-#### Complete Infrastructure Recreation
-```bash
-# Destroy everything
-terraform destroy -auto-approve
-
-# Recreate from code
-terraform init
-terraform apply -auto-approve
-
-# Verify runners register
-# Run test job
-```
-
-#### State Recovery Test
-```bash
-# Backup state
-terraform state pull > backup.tfstate
-
-# Simulate corruption
-rm terraform.tfstate
-
-# Restore
-terraform state push backup.tfstate
-
-# Verify
-terraform plan  # Should show no changes
-```
-
-## Test Results Documentation
-
-### Test Report Template
-```markdown
-# Test Report: [Implementation Name]
-**Date:** YYYY-MM-DD  
-**Tester:** [Name]  
-**Environment:** [Test/Staging/Production]
-
-## Test Summary
-- **Total Tests:** X
-- **Passed:** X
-- **Failed:** X
-- **Skipped:** X
-
-## Detailed Results
-
-### Terraform Validation
-- [ ] Module validation: PASS/FAIL
-- [ ] Implementation validation: PASS/FAIL
-- [ ] Syntax check: PASS/FAIL
-
-### Integration Tests
-- [ ] Deployment: PASS/FAIL
-- [ ] Runner registration: PASS/FAIL
-- [ ] Job execution: PASS/FAIL
-- [ ] Autoscaling: PASS/FAIL
-- [ ] Scale to zero: PASS/FAIL
-- [ ] Spot termination: PASS/FAIL
-
-### Security Tests
-- [ ] Network security: PASS/FAIL
-- [ ] IAM/RBAC: PASS/FAIL
-- [ ] No hardcoded secrets: PASS/FAIL
-
-### Performance Tests
-- [ ] Startup time: X seconds (target: <180s)
-- [ ] Scale up time: X minutes (target: <5min)
-- [ ] Load handling: PASS/FAIL
-
-## Issues Found
-1. [Issue description]
-   - Severity: High/Medium/Low
-   - Status: Open/Fixed
-   - Fix: [Description]
-
-## Recommendations
-1. [Recommendation]
-
-## Sign-off
-- Tested by: [Name]
-- Approved by: [Name]
-- Date: YYYY-MM-DD
-```
-
-## Automated Testing Script
+### Scenario 2: Cost Optimization
 
 ```bash
-#!/bin/bash
-# run-tests.sh - Automated testing script
+# Deploy with spot instances
+use_spot_instances = true
+min_instances      = 0
 
-set -e
+# Expected: Instances use spot pricing
+# Expected: Scales to zero when idle
+# Verify: Check billing after 24 hours
+```
 
-REPORT_FILE="test-report-$(date +%Y%m%d-%H%M%S).md"
+### Scenario 3: High Availability
 
-echo "# Automated Test Report" > "$REPORT_FILE"
-echo "Date: $(date)" >> "$REPORT_FILE"
-echo "" >> "$REPORT_FILE"
+```bash
+# Configure multiple zones
+zones = ["1", "2", "3"]
+min_instances = 3
 
-# Function to run test and log result
-run_test() {
-  local test_name="$1"
-  local test_command="$2"
-  
-  echo "Running: $test_name"
-  echo "## Test: $test_name" >> "$REPORT_FILE"
-  
-  if eval "$test_command"; then
-    echo "- ✅ PASSED" >> "$REPORT_FILE"
-    echo "PASSED"
-  else
-    echo "- ❌ FAILED" >> "$REPORT_FILE"
-    echo "FAILED"
-    return 1
-  fi
-  echo "" >> "$REPORT_FILE"
-}
+# Terminate instance in one zone
+# Expected: Job continues on instances in other zones
+# Verify: Job doesn't fail
+```
 
-# Run all tests
-echo "=== Starting Automated Tests ==="
+### Scenario 4: Network Isolation
 
-run_test "Terraform Format Check" "terraform fmt -check -recursive"
-run_test "Azure VMSS Module Validation" "cd modules/azure-vmss && terraform init && terraform validate"
-run_test "AWS ASG Module Validation" "cd modules/aws-asg && terraform init && terraform validate"
+```bash
+# Deploy in private subnet
+associate_public_ip_address = false  # AWS
 
-# Add more tests...
+# Expected: Instances accessible via Session Manager (AWS) or Bastion (Azure)
+# Expected: Outbound internet works via NAT Gateway
+# Verify: Runner can pull Docker images, packages
+```
 
-echo "=== Tests Complete ==="
-echo "Report saved to: $REPORT_FILE"
+## Performance Testing
+
+### Job Execution Time
+
+```bash
+# Run same job on self-hosted vs cloud runners
+# Compare execution times
+
+# Expected: Self-hosted similar or faster (no queue time)
+```
+
+### Disk I/O
+
+```bash
+# Test in job:
+dd if=/dev/zero of=testfile bs=1G count=1 oflag=direct
+
+# Compare disk types:
+# StandardSSD_LRS (Azure) vs gp3 (AWS)
+# Premium_LRS (Azure) vs gp3 w/ higher IOPS (AWS)
+```
+
+### Network Throughput
+
+```bash
+# Test in job:
+wget -O /dev/null http://speedtest.ftp.otenet.gr/files/test10Mb.db
+
+# Compare between regions/zones
+```
+
+## Troubleshooting Tests
+
+### Runners Not Registering
+
+```bash
+# Check initialization logs
+# Azure
+az vmss run-command invoke --resource-group <rg> --name <vmss> \
+  --command-id RunShellScript --scripts "cat /var/log/cloud-init-output.log"
+
+# AWS
+aws ssm start-session --target <instance-id>
+sudo cat /var/log/user-data.log
+```
+
+### Autoscaling Not Working
+
+```bash
+# Check autoscale settings
+# Azure
+az monitor autoscale show --resource-group <rg> --name <vmss>-autoscale
+
+# AWS
+aws autoscaling describe-policies --auto-scaling-group-name <asg>
+
+# Check metrics
+# Azure
+az monitor metrics list --resource <vmss-id> --metric "Percentage CPU"
+
+# AWS
+aws cloudwatch get-metric-statistics --namespace AWS/EC2 \
+  --metric-name CPUUtilization --dimensions Name=AutoScalingGroupName,Value=<asg>
 ```
 
 ## Continuous Testing
 
-### Pre-commit Hook
-```bash
-#!/bin/bash
-# .git/hooks/pre-commit
+### CI/CD Integration
 
-# Run terraform fmt
-terraform fmt -recursive
+Run tests automatically on changes:
 
-# Run validation
-for dir in modules/*/ azure/*/ aws/*/; do
-  if [ -f "$dir/main.tf" ]; then
-    echo "Validating $dir"
-    (cd "$dir" && terraform init -backend=false && terraform validate)
-  fi
-done
-```
-
-### CI/CD Pipeline
 ```yaml
 # .github/workflows/terraform-test.yml
 name: Terraform Tests
@@ -432,106 +314,40 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v2
-      
       - name: Terraform Format
         run: terraform fmt -check -recursive
-      
-      - name: Validate Modules
+      - name: Terraform Validate
         run: |
-          for dir in modules/*/; do
-            cd "$dir"
+          for dir in modules/*/ azure/*/ aws/*/; do
+            cd $dir
             terraform init -backend=false
             terraform validate
             cd -
           done
+      - name: Terraform Test
+        run: ./scripts/run-tests.sh
 ```
 
-## Performance Benchmarks
+## Load Testing
 
-### Expected Performance Metrics
+### Stress Test Autoscaling
 
-| Metric | Target | Warning | Critical | Notes |
-|--------|--------|---------|----------|-------|
-| Startup Time | <180s | 180-300s | >300s | From scale-up to job start |
-| Scale Up Response | <5min | 5-10min | >10min | VM provision + runner registration |
-| Scale Down Response | <15min | 15-25min | >25min | After jobs complete |
-| Job Queue Time | <60s | 60-180s | >180s | With available capacity |
-| Spot Interruption Recovery | <5min | 5-10min | >10min | Auto-replacement time |
-| Disk I/O (StandardSSD) | 500 IOPS | 300-500 | <300 | 64GB disk baseline |
-| Disk I/O (Premium) | 120 IOPS/GB | 80-120 | <80 | Performance tier |
-
-### Performance Tuning Options
-
-**To improve startup time:**
-- Use Premium_LRS disks (+2-3x IOPS, +$5/mo)
-- Pre-warm instances (set min_instances > 0)
-- Use larger VM sizes for faster provisioning
-
-**To improve build speed:**
-- Increase disk size for better caching
-- Use compute-optimized VMs (F-series)
-- Set runner_count_per_instance = 1 for dedicated resources
-
-## Troubleshooting Test Failures
-
-### Common Issues
-
-**Terraform Init Fails**
 ```bash
-# Clear cache
-rm -rf .terraform .terraform.lock.hcl
-terraform init
+# Configure aggressive autoscaling
+cpu_scale_out_threshold = 50
+max_instances          = 20
+
+# Trigger many concurrent jobs (100+)
+# Monitor:
+# - Instance count
+# - Job queue depth
+# - CPU utilization
+# - Scale up/down timing
 ```
 
-**Runner Not Registering**
-```bash
-# Check logs
-sudo cat /var/log/gitlab-runner-init.log
-docker ps -a | grep runner
-docker logs <container-name>
+## References
 
-# Check network
-curl -I $RUNNER_URL
-```
-
-**Autoscaling Not Working**
-```bash
-# Check CPU metrics
-# Azure
-az monitor metrics list --resource <vmss-id> --metric "Percentage CPU"
-
-# AWS
-aws cloudwatch get-metric-statistics \
-  --namespace AWS/EC2 \
-  --metric-name CPUUtilization \
-  --dimensions Name=AutoScalingGroupName,Value=<asg-name> \
-  --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
-  --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
-  --period 300 \
-  --statistics Average
-```
-
-## Test Sign-off Checklist
-
-Before approving for production:
-
-- [ ] All Terraform configurations validate successfully
-- [ ] Successful deployment to test environment
-- [ ] Runners register correctly on all platforms
-- [ ] Test jobs execute successfully
-- [ ] Autoscaling works as expected
-- [ ] Scale-to-zero functions correctly
-- [ ] Spot termination handled gracefully
-- [ ] Security audit passed
-- [ ] Performance benchmarks met
-- [ ] Documentation reviewed and accurate
-- [ ] Cost estimates validated
-- [ ] Rollback procedure tested
-- [ ] Monitoring and alerts configured
-- [ ] Team trained on operations
-
----
-
-**Ready for Production:** ✅ / ❌  
-**Approved By:** _________________  
-**Date:** _________________
+- [Terraform Testing Documentation](https://developer.hashicorp.com/terraform/language/tests)
+- [docs/TERRAFORM_TESTING.md](docs/TERRAFORM_TESTING.MD) - Framework details
+- [QUICKSTART.md](QUICKSTART.md) - Deployment procedures
+- [SECURITY.md](SECURITY.md) - Security validation
