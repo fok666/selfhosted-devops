@@ -136,7 +136,8 @@ write_files:
         # Add cache configuration if enabled
         if [ "$ENABLE_CACHE" = "true" ]; then
           echo "  Enabling Azure Blob Storage cache"
-          DOCKER_ARGS+=(-e "ACTIONS_CACHE_URL=https://$${CACHE_STORAGE_ACCOUNT}.blob.core.windows.net/$${CACHE_CONTAINER}")
+          CACHE_URL="https://$${CACHE_STORAGE_ACCOUNT}.blob.core.windows.net/$${CACHE_CONTAINER}"
+          DOCKER_ARGS+=(-e "ACTIONS_CACHE_URL=$${CACHE_URL}")
           DOCKER_ARGS+=(-e "ACTIONS_RUNTIME_TOKEN=$${CACHE_STORAGE_KEY}")
         fi
         
