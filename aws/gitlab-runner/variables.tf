@@ -418,6 +418,8 @@ variable "associate_public_ip_address" {
   default     = false
 }
 
+# trivy:ignore:AVD-AWS-0104 "Unrestricted egress required for CI/CD: GitLab, Docker Hub, package repos, etc."
+# tfsec:ignore:aws-ec2-no-public-egress-sgr "CI/CD runners require internet access for typical operations"
 variable "egress_cidr_blocks" {
   description = <<-EOT
     CIDR blocks for outbound traffic from security group - USE WITH UNDERSTANDING.
