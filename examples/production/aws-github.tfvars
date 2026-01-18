@@ -18,50 +18,50 @@
 # -----------------------------------------------------------------------------
 # REQUIRED: You MUST customize these values
 # -----------------------------------------------------------------------------
-project_name = "production-github-runner"          # Change to your project name
-github_url   = "https://github.com"                # Or GitHub Enterprise URL
-github_token = "ghp_xxxxx"                         # Get from GitHub: Settings > Developer settings > PAT
-github_scope = "repo"                              # Repository or organization name
+project_name = "production-github-runner" # Change to your project name
+github_url   = "https://github.com"       # Or GitHub Enterprise URL
+github_token = "ghp_xxxxx"                # Get from GitHub: Settings > Developer settings > PAT
+github_scope = "repo"                     # Repository or organization name
 
 # -----------------------------------------------------------------------------
 # AWS Configuration
 # -----------------------------------------------------------------------------
-region = "us-east-1"                               # Change to your preferred region
+region = "us-east-1" # Change to your preferred region
 
 # -----------------------------------------------------------------------------
 # Runner Configuration
 # -----------------------------------------------------------------------------
-runner_tags = "docker,linux,aws,production"        # Tags for job matching
+runner_tags = "docker,linux,aws,production" # Tags for job matching
 
 # -----------------------------------------------------------------------------
 # Compute Configuration - Production-grade
 # -----------------------------------------------------------------------------
-instance_type      = "t3.large"                    # 2 vCPU, 8GB RAM (~$60/mo on-demand, ~$18/mo spot)
-use_spot_instances = true                          # Still use spot for cost savings
-spot_max_price     = ""                            # Empty = pay up to on-demand
+instance_type      = "t3.large" # 2 vCPU, 8GB RAM (~$60/mo on-demand, ~$18/mo spot)
+use_spot_instances = true       # Still use spot for cost savings
+spot_max_price     = ""         # Empty = pay up to on-demand
 
 # -----------------------------------------------------------------------------
 # Autoscaling - Always maintain baseline capacity
 # -----------------------------------------------------------------------------
-min_size         = 2                               # Always 2 instances for availability
-max_size         = 10                              # Scale up to 10 for peak load
-desired_capacity = 3                               # Normal load baseline
+min_size         = 2  # Always 2 instances for availability
+max_size         = 10 # Scale up to 10 for peak load
+desired_capacity = 3  # Normal load baseline
 
 # -----------------------------------------------------------------------------
 # Runner Instances per VM
 # -----------------------------------------------------------------------------
-runner_count_per_instance = 0                      # 0 = auto (will use 2 for 2 vCPU)
+runner_count_per_instance = 0 # 0 = auto (will use 2 for 2 vCPU)
 
 # -----------------------------------------------------------------------------
 # Docker Configuration
 # -----------------------------------------------------------------------------
-docker_image = "fok666/github-runner:latest"       # Pre-configured GitHub Actions Runner
+docker_image = "fok666/github-runner:latest" # Pre-configured GitHub Actions Runner
 
 # -----------------------------------------------------------------------------
 # Storage - More space for Docker caching
 # -----------------------------------------------------------------------------
-root_volume_size = 128                             # 128GB for extensive caching
-root_volume_type = "gp3"                           # General Purpose SSD
+root_volume_size = 128   # 128GB for extensive caching
+root_volume_type = "gp3" # General Purpose SSD
 
 # -----------------------------------------------------------------------------
 # Network Configuration - Use defaults
@@ -73,7 +73,7 @@ root_volume_type = "gp3"                           # General Purpose SSD
 # Autoscaling Thresholds - Tuned for production
 # -----------------------------------------------------------------------------
 # Scale out more aggressively, scale in conservatively
-target_cpu_utilization = 65                        # Target 65% CPU utilization
+target_cpu_utilization = 65 # Target 65% CPU utilization
 
 # -----------------------------------------------------------------------------
 # Tags

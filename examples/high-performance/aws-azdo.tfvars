@@ -18,51 +18,51 @@
 # -----------------------------------------------------------------------------
 # REQUIRED: You MUST customize these values
 # -----------------------------------------------------------------------------
-project_name = "high-perf-azdo-agent"              # Change to your project name
-azdo_url     = "https://dev.azure.com/yourorg"     # Your Azure DevOps organization URL
-azdo_token   = "xxxxx"                             # Get from Azure DevOps: User Settings > PAT
-azdo_pool    = "Default"                           # Agent pool name
+project_name = "high-perf-azdo-agent"          # Change to your project name
+azdo_url     = "https://dev.azure.com/yourorg" # Your Azure DevOps organization URL
+azdo_token   = "xxxxx"                         # Get from Azure DevOps: User Settings > PAT
+azdo_pool    = "Default"                       # Agent pool name
 
 # -----------------------------------------------------------------------------
 # AWS Configuration
 # -----------------------------------------------------------------------------
-region = "us-east-1"                               # Change to your preferred region
+region = "us-east-1" # Change to your preferred region
 
 # -----------------------------------------------------------------------------
 # Agent Configuration
 # -----------------------------------------------------------------------------
-agent_tags = "docker,linux,aws,high-performance"   # Tags for job matching
+agent_tags = "docker,linux,aws,high-performance" # Tags for job matching
 
 # -----------------------------------------------------------------------------
 # Compute Configuration - High performance
 # -----------------------------------------------------------------------------
-instance_type      = "t3.xlarge"                   # 4 vCPU, 16GB RAM (~$120/mo on-demand, ~$36/mo spot)
-use_spot_instances = true                          # Still use spot where possible
-spot_max_price     = ""                            # Empty = pay up to on-demand
+instance_type      = "t3.xlarge" # 4 vCPU, 16GB RAM (~$120/mo on-demand, ~$36/mo spot)
+use_spot_instances = true        # Still use spot where possible
+spot_max_price     = ""          # Empty = pay up to on-demand
 
 # -----------------------------------------------------------------------------
 # Autoscaling - Higher baseline capacity
 # -----------------------------------------------------------------------------
-min_size         = 3                               # Always 3 instances for capacity
-max_size         = 20                              # Scale up to 20 for peak load
-desired_capacity = 5                               # Normal load baseline
+min_size         = 3  # Always 3 instances for capacity
+max_size         = 20 # Scale up to 20 for peak load
+desired_capacity = 5  # Normal load baseline
 
 # -----------------------------------------------------------------------------
 # Agent Instances per VM
 # -----------------------------------------------------------------------------
-agent_count_per_instance = 0                       # 0 = auto (will use 4 for 4 vCPU)
+agent_count_per_instance = 0 # 0 = auto (will use 4 for 4 vCPU)
 
 # -----------------------------------------------------------------------------
 # Docker Configuration
 # -----------------------------------------------------------------------------
-docker_image = "fok666/azure-devops-agent:latest"  # Pre-configured Azure DevOps Agent
+docker_image = "fok666/azure-devops-agent:latest" # Pre-configured Azure DevOps Agent
 
 # -----------------------------------------------------------------------------
 # Storage - Maximum space for extensive caching
 # -----------------------------------------------------------------------------
-root_volume_size = 256                             # 256GB for maximum caching
-root_volume_type = "gp3"                           # General Purpose SSD with better performance
-root_volume_iops = 3000                            # Higher IOPS for better I/O
+root_volume_size = 256   # 256GB for maximum caching
+root_volume_type = "gp3" # General Purpose SSD with better performance
+root_volume_iops = 3000  # Higher IOPS for better I/O
 
 # -----------------------------------------------------------------------------
 # Network Configuration - Use defaults
@@ -73,7 +73,7 @@ root_volume_iops = 3000                            # Higher IOPS for better I/O
 # -----------------------------------------------------------------------------
 # Autoscaling Thresholds - Very aggressive for performance
 # -----------------------------------------------------------------------------
-target_cpu_utilization = 60                        # Target 60% CPU (very aggressive)
+target_cpu_utilization = 60 # Target 60% CPU (very aggressive)
 
 # -----------------------------------------------------------------------------
 # Tags

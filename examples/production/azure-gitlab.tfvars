@@ -21,49 +21,49 @@
 # -----------------------------------------------------------------------------
 # REQUIRED: You MUST customize these values
 # -----------------------------------------------------------------------------
-project_name = "production-gitlab-runner"          # Change to your project name
-gitlab_url   = "https://gitlab.com"                # Or your GitLab instance URL
-gitlab_token = "glrt-xxxxx"                        # Get from GitLab: Settings > CI/CD > Runners
+project_name = "production-gitlab-runner" # Change to your project name
+gitlab_url   = "https://gitlab.com"       # Or your GitLab instance URL
+gitlab_token = "glrt-xxxxx"               # Get from GitLab: Settings > CI/CD > Runners
 
 # -----------------------------------------------------------------------------
 # Azure Configuration
 # -----------------------------------------------------------------------------
-location = "East US"                               # Change to your preferred region
+location = "East US" # Change to your preferred region
 
 # -----------------------------------------------------------------------------
 # Runner Configuration
 # -----------------------------------------------------------------------------
-runner_tags = "docker,linux,azure,production"      # Tags for job matching
+runner_tags = "docker,linux,azure,production" # Tags for job matching
 
 # -----------------------------------------------------------------------------
 # Compute Configuration - Production-grade
 # -----------------------------------------------------------------------------
-vm_sku             = "Standard_D2s_v3"             # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
-use_spot_instances = true                          # Still use spot for cost savings
-spot_max_price     = -1                            # Pay up to on-demand price
+vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
+use_spot_instances = true              # Still use spot for cost savings
+spot_max_price     = -1                # Pay up to on-demand price
 
 # -----------------------------------------------------------------------------
 # Autoscaling - Always maintain baseline capacity
 # -----------------------------------------------------------------------------
-min_instances     = 2                              # Always 2 instances for availability
-max_instances     = 10                             # Scale up to 10 for peak load
-default_instances = 3                              # Normal load baseline
+min_instances     = 2  # Always 2 instances for availability
+max_instances     = 10 # Scale up to 10 for peak load
+default_instances = 3  # Normal load baseline
 
 # -----------------------------------------------------------------------------
 # Runner Instances per VM
 # -----------------------------------------------------------------------------
-runner_count_per_vm = 0                            # 0 = auto (will use 2 for 2 vCPU)
+runner_count_per_vm = 0 # 0 = auto (will use 2 for 2 vCPU)
 
 # -----------------------------------------------------------------------------
 # Docker Configuration
 # -----------------------------------------------------------------------------
-docker_image = "fok666/gitlab-runner:latest"       # Pre-configured GitLab Runner
+docker_image = "fok666/gitlab-runner:latest" # Pre-configured GitLab Runner
 
 # -----------------------------------------------------------------------------
 # Storage - More space for Docker caching
 # -----------------------------------------------------------------------------
-os_disk_size_gb = 128                              # 128GB for extensive caching
-os_disk_type    = "StandardSSD_LRS"                # Standard SSD (good balance)
+os_disk_size_gb = 128               # 128GB for extensive caching
+os_disk_type    = "StandardSSD_LRS" # Standard SSD (good balance)
 
 # =============================================================================
 # PRODUCTION FEATURES - Enable for production deployments
@@ -88,10 +88,10 @@ cache_storage_container_name = "runner-cache"
 # -----------------------------------------------------------------------------
 # Centralized Logging - HIGHLY RECOMMENDED for production
 # -----------------------------------------------------------------------------
-enable_centralized_logging  = true
+enable_centralized_logging = true
 # log_analytics_workspace_id  = "/subscriptions/{sub-id}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{workspace}"
 # log_analytics_workspace_key = "your-workspace-key"
-log_retention_days          = 30
+log_retention_days = 30
 
 # To get Log Analytics workspace credentials:
 # 1. Create workspace: az monitor log-analytics workspace create --name myworkspace --resource-group myrg --location eastus
@@ -131,8 +131,8 @@ metrics_port             = 9252
 # Autoscaling Thresholds - Tuned for production
 # -----------------------------------------------------------------------------
 # Scale out more aggressively, scale in conservatively
-cpu_scale_out_threshold = 65                       # Scale out at 65% CPU (more aggressive)
-cpu_scale_in_threshold  = 25                       # Scale in at 25% CPU (more conservative)
+cpu_scale_out_threshold = 65 # Scale out at 65% CPU (more aggressive)
+cpu_scale_in_threshold  = 25 # Scale in at 25% CPU (more conservative)
 
 # -----------------------------------------------------------------------------
 # Tags
@@ -144,6 +144,5 @@ tags = {
   CostCenter  = "Production-CI-CD"
   Monitoring  = "Enabled"
   Caching     = "Enabled"
-}
   Criticality = "High"
 }

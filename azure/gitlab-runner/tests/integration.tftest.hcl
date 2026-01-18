@@ -7,16 +7,16 @@ run "validate_complete_configuration" {
   command = plan
 
   variables {
-    project_name      = "gltest"
-    location          = "eastus"
-    gitlab_url        = "https://gitlab.com"
-    gitlab_token      = "glrt-test-token-12345678"
-    vm_sku            = "Standard_D2s_v3"
+    project_name       = "gltest"
+    location           = "eastus"
+    gitlab_url         = "https://gitlab.com"
+    gitlab_token       = "glrt-test-token-12345678"
+    vm_sku             = "Standard_D2s_v3"
     use_spot_instances = true
-    spot_max_price    = 0.05
-    min_instances     = 0
-    max_instances     = 5
-    default_instances = 1
+    spot_max_price     = 0.05
+    min_instances      = 0
+    max_instances      = 5
+    default_instances  = 1
   }
 
   # Verify GitLab configuration
@@ -36,16 +36,16 @@ run "validate_cost_optimization" {
   command = plan
 
   variables {
-    project_name      = "gltest"
-    location          = "eastus"
-    gitlab_url        = "https://gitlab.com"
-    gitlab_token      = "glrt-test-token-12345678"
-    vm_sku            = "Standard_B2s"
+    project_name       = "gltest"
+    location           = "eastus"
+    gitlab_url         = "https://gitlab.com"
+    gitlab_token       = "glrt-test-token-12345678"
+    vm_sku             = "Standard_B2s"
     use_spot_instances = true
-    spot_max_price    = 0.02
-    min_instances     = 0
-    max_instances     = 2
-    default_instances = 0
+    spot_max_price     = 0.02
+    min_instances      = 0
+    max_instances      = 2
+    default_instances  = 0
   }
 
   # Verify cost-optimized settings
@@ -91,15 +91,15 @@ run "validate_high_availability" {
   command = plan
 
   variables {
-    project_name      = "gltest"
-    location          = "eastus"
-    gitlab_url        = "https://gitlab.com"
-    gitlab_token      = "glrt-test-token-12345678"
-    vm_sku            = "Standard_D4s_v3"
+    project_name       = "gltest"
+    location           = "eastus"
+    gitlab_url         = "https://gitlab.com"
+    gitlab_token       = "glrt-test-token-12345678"
+    vm_sku             = "Standard_D4s_v3"
     use_spot_instances = false
-    min_instances     = 2
-    max_instances     = 10
-    default_instances = 3
+    min_instances      = 2
+    max_instances      = 10
+    default_instances  = 3
   }
 
   # Verify HA configuration

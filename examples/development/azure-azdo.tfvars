@@ -18,50 +18,50 @@
 # -----------------------------------------------------------------------------
 # REQUIRED: You MUST customize these values
 # -----------------------------------------------------------------------------
-project_name = "dev-azdo-agent"                    # Change to your project name
-azdo_url     = "https://dev.azure.com/yourorg"     # Your Azure DevOps organization URL
-azdo_token   = "xxxxx"                             # Get from Azure DevOps: User Settings > PAT
-azdo_pool    = "Default"                           # Agent pool name
+project_name = "dev-azdo-agent"                # Change to your project name
+azdo_url     = "https://dev.azure.com/yourorg" # Your Azure DevOps organization URL
+azdo_token   = "xxxxx"                         # Get from Azure DevOps: User Settings > PAT
+azdo_pool    = "Default"                       # Agent pool name
 
 # -----------------------------------------------------------------------------
 # Azure Configuration
 # -----------------------------------------------------------------------------
-location = "East US"                               # Change to your preferred region
+location = "East US" # Change to your preferred region
 
 # -----------------------------------------------------------------------------
 # Agent Configuration
 # -----------------------------------------------------------------------------
-agent_tags = "docker,linux,azure,development"      # Tags for job matching
+agent_tags = "docker,linux,azure,development" # Tags for job matching
 
 # -----------------------------------------------------------------------------
 # Compute Configuration - Balanced for development
 # -----------------------------------------------------------------------------
-vm_sku             = "Standard_D2s_v3"             # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
-use_spot_instances = true                          # Use spot for cost savings
-spot_max_price     = -1                            # Pay up to on-demand price
+vm_sku             = "Standard_D2s_v3" # 2 vCPU, 8GB RAM (~$70/mo on-demand, ~$21/mo spot)
+use_spot_instances = true              # Use spot for cost savings
+spot_max_price     = -1                # Pay up to on-demand price
 
 # -----------------------------------------------------------------------------
 # Autoscaling - Maintain 1 baseline instance
 # -----------------------------------------------------------------------------
-min_instances     = 1                              # Always 1 instance available
-max_instances     = 5                              # Scale up to 5 for peak load
-default_instances = 1                              # Start with 1 instance
+min_instances     = 1 # Always 1 instance available
+max_instances     = 5 # Scale up to 5 for peak load
+default_instances = 1 # Start with 1 instance
 
 # -----------------------------------------------------------------------------
 # Agent Instances per VM
 # -----------------------------------------------------------------------------
-agent_count_per_vm = 0                             # 0 = auto (will use 2 for 2 vCPU)
+agent_count_per_vm = 0 # 0 = auto (will use 2 for 2 vCPU)
 
 # -----------------------------------------------------------------------------
 # Docker Configuration
 # -----------------------------------------------------------------------------
-docker_image = "fok666/azure-devops-agent:latest"  # Pre-configured Azure DevOps Agent
+docker_image = "fok666/azure-devops-agent:latest" # Pre-configured Azure DevOps Agent
 
 # -----------------------------------------------------------------------------
 # Storage - Good space for Docker caching
 # -----------------------------------------------------------------------------
-os_disk_size_gb = 100                              # 100GB for good caching
-os_disk_type    = "StandardSSD_LRS"                # Standard SSD
+os_disk_size_gb = 100               # 100GB for good caching
+os_disk_type    = "StandardSSD_LRS" # Standard SSD
 
 # -----------------------------------------------------------------------------
 # Network Configuration - Use defaults
