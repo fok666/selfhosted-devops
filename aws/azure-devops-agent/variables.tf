@@ -493,3 +493,246 @@ variable "tags" {
     Purpose     = "azure-devops-agent"
   }
 }
+# =============================================================================
+# Production Features (Optional)
+# =============================================================================
+
+# ---------- Distributed Caching (S3) ----------
+variable "enable_distributed_cache" {
+  description = <<-EOT
+    Enable distributed cache sharing across agents using Amazon S3.
+    
+    **Benefits:**
+    - ✓ Faster build times (cache dependencies, build artifacts)
+    - ✓ Reduced bandwidth usage
+    - ✓ Shared cache across all agents
+    
+    **Cost Impact:**
+    - S3 storage: ~$0.023/GB/month (Standard)
+    - GET requests: $0.0004/1000 requests
+    - PUT requests: $0.005/1000 requests
+    - **Estimated:** $2-5/month for typical usage (100GB storage)
+    
+    **Default:** false (disabled)
+    **Requires:** cache_s3_bucket_name, cache_s3_region
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cache_s3_bucket_name" {
+  description = <<-EOT
+    S3 bucket name for distributed cache storage.
+    
+    **Requirements:**
+    - Must be globally unique across all AWS accounts
+    - 3-63 characters, lowercase letters, numbers, hyphens
+    - Cannot start or end with hyphen
+    
+    **Example:** "mycompany-azdevops-cache-us-east-1"
+    
+    **Required when:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "cache_s3_region" {
+  description = <<-EOT
+    AWS region for the S3 cache bucket.
+    
+    **Recommendation:** Use the same region as your agents for:
+    - ✓ Lowest latency
+    - ✓ No data transfer costs between regions
+    - ✓ Better performance
+    
+    **Default:** Same as aws_region
+    **Required when:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "cache_s3_prefix" {
+  description = <<-EOT
+    S3 key prefix for cache objects (folder path).
+    
+    **Use Cases:**
+    - Share bucket across multiple projects: "project-a/cache/"
+    - Environment separation: "prod/cache/" vs "dev/cache/"
+    - Team isolation: "team-backend/cache/"
+    
+    **Default:** "cache/" (all agents share same cache)
+  EOT
+  type        = string
+  default     = "cache/"
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Enable cache sharing across all agents.
+    
+    **Options:**
+    - true: All agents share the same cache (recommended for teams)
+    - false: Each agent has its own isolated cache
+    
+    **Recommendation:** true (faster builds, better cache hit rate)
+    
+    **Default:** true
+  EOT
+  type        = bool
+  default     = true
+}
+
+# ---------- Centralized Logging (CloudWatch) ----------
+variable "enable_centralized_logging" {
+  description = <<-EOT
+    Enable centralized logging using Amazon CloudWatch Logs.
+    
+    **Benefits:**
+    - ✓ Centralized log aggregation and search
+    - ✓ Long-term log retention
+    - ✓ Real-time log streaming
+    - ✓ Integration with CloudWatch Insights for log analysis
+    
+    **Cost Impact:**
+    - Ingestion: $0.50/GB
+    - Storage: $0.03/GB/month
+    - Queries: Included (up to reasonable limits)
+    - **Estimated:** $2-10/month for typical usage (5-20GB/month)
+    
+    **What's Logged:**
+    - Agent registration logs
+    - Build execution logs
+    - Docker container logs
+    - System logs (syslog)
+    
+    **Default:** false (disabled)
+    **Requires:** cloudwatch_log_group_name
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cloudwatch_log_group_name" {
+  description = <<-EOT
+    CloudWatch Logs group name for centralized logging.
+    
+    **Naming Convention:**
+    - /aws/azdevops/agents/{environment}
+    - /azdevops-agents/production
+    - /agents/azdevops/{team-name}
+    
+    **Example:** "/aws/azdevops/agents/production"
+    
+    **Note:** Log group will be created automatically if it doesn't exist
+    
+    **Required when:** enable_centralized_logging = true
+  EOT
+  type        = string
+  default     = "/aws/azdevops/agents"
+}
+
+variable "cloudwatch_log_retention_days" {
+  description = <<-EOT
+    Number of days to retain logs in CloudWatch.
+    
+    **Common Values:**
+    - 7: Development/testing (cost-optimized)
+    - 30: Standard production workloads
+    - 90: Compliance requirements
+    - 365: Long-term audit requirements
+    - 0: Never expire (not recommended - unbounded costs)
+    
+    **Cost Impact:**
+    - Storage cost scales linearly with retention period
+    - Example: 7 days = $0.21/GB total, 30 days = $0.90/GB total
+    
+    **Default:** 7 days
+  EOT
+  type        = number
+  default     = 7
+
+  validation {
+    condition = contains([
+      0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180,
+      365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653
+    ], var.cloudwatch_log_retention_days)
+    error_message = "cloudwatch_log_retention_days must be a valid CloudWatch retention period"
+  }
+}
+
+variable "cloudwatch_agent_config" {
+  description = <<-EOT
+    Custom CloudWatch agent configuration (JSON).
+    
+    **Use Cases:**
+    - Custom log collection paths
+    - Specific log parsing rules
+    - Advanced metric collection
+    
+    **Default:** null (uses standard configuration)
+    **Reference:** https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html
+  EOT
+  type        = string
+  default     = null
+}
+
+# ---------- Agent Monitoring (Prometheus) ----------
+variable "enable_agent_monitoring" {
+  description = <<-EOT
+    Enable Prometheus metrics endpoint for agent monitoring.
+    
+    **Benefits:**
+    - ✓ Real-time agent health monitoring
+    - ✓ Resource usage metrics (CPU, memory, disk)
+    - ✓ Build queue and execution metrics
+    - ✓ Integration with Prometheus/Grafana
+    
+    **Metrics Exposed:**
+    - agent_status (online/offline)
+    - agent_cpu_usage_percent
+    - agent_memory_usage_bytes
+    - agent_disk_usage_percent
+    - agent_build_duration_seconds
+    - agent_build_success_total
+    - agent_build_failure_total
+    
+    **Cost Impact:**
+    - Free (requires external Prometheus server to scrape metrics)
+    
+    **Security:**
+    - Metrics endpoint is exposed on internal network only
+    - No authentication required (internal network trust)
+    
+    **Default:** false (disabled)
+    **Requires:** metrics_port
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "metrics_port" {
+  description = <<-EOT
+    Port for Prometheus metrics endpoint.
+    
+    **Common Values:**
+    - 9090: Prometheus default
+    - 9100: Node Exporter default
+    - 9091: Pushgateway default
+    
+    **Note:** Port is only accessible within the VPC (not exposed publicly)
+    
+    **Default:** 9090
+    **Required when:** enable_agent_monitoring = true
+  EOT
+  type        = number
+  default     = 9090
+
+  validation {
+    condition     = var.metrics_port > 0 && var.metrics_port <= 65535
+    error_message = "metrics_port must be between 1 and 65535"
+  }
+}
+
+# =============================================================================

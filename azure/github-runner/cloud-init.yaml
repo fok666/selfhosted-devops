@@ -70,6 +70,15 @@ write_files:
       RUNNER_COUNT="${runner_count}"
       DOCKER_IMAGE="${runner_docker_image}"
       
+      # Production Features Configuration
+      ENABLE_CACHE="${enable_distributed_cache}"
+      CACHE_STORAGE_ACCOUNT="${cache_storage_account_name}"
+      CACHE_CONTAINER="${cache_storage_container_name}"
+      CACHE_STORAGE_KEY="${cache_storage_account_key}"
+      CACHE_SHARED="${cache_shared}"
+      ENABLE_MONITORING="${enable_runner_monitoring}"
+      METRICS_PORT="${metrics_port}"
+      
       # Auto-detect runner count based on CPU count if runner_count is 0
       if [ "$RUNNER_COUNT" = "0" ]; then
         CPU_COUNT=$(nproc)
@@ -114,26 +123,98 @@ write_files:
           docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
         fi
         
-        docker run \
-          --privileged \
-          --tty \
-          --detach \
-          --cpus="$${MAX_CPU}" \
-          -e GITHUB_URL="$GITHUB_URL" \
-          -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-          -e RUNNER_NAME="$RUNNER_NAME" \
-          -e RUNNER_LABELS="$RUNNER_LABELS" \
-          -e RUNNER_WORK_DIRECTORY="/_work" \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          -v "$WORK_DIR":/_work \
-          --restart unless-stopped \
-          --name "$CONTAINER_NAME" \
+        # Build docker run command safely using an array
+        DOCKER_ARGS=(
+          --privileged --tty --detach --cpus="$${MAX_CPU}"
+          -e GITHUB_URL="$GITHUB_URL"
+          -e GITHUB_TOKEN="$GITHUB_TOKEN"
+          -e RUNNER_NAME="$RUNNER_NAME"
+          -e RUNNER_LABELS="$RUNNER_LABELS"
+          -e RUNNER_WORK_DIRECTORY="/_work"
+        )
+        
+        # Add cache configuration if enabled
+        if [ "$ENABLE_CACHE" = "true" ]; then
+          echo "  Enabling Azure Blob Storage cache"
+          CACHE_URL="https://$${CACHE_STORAGE_ACCOUNT}.blob.core.windows.net/$${CACHE_CONTAINER}"
+          DOCKER_ARGS+=(-e "ACTIONS_CACHE_URL=$${CACHE_URL}")
+          DOCKER_ARGS+=(-e "ACTIONS_RUNTIME_TOKEN=$${CACHE_STORAGE_KEY}")
+        fi
+        
+        # Add monitoring configuration if enabled
+        if [ "$ENABLE_MONITORING" = "true" ]; then
+          echo "  Enabling metrics on port $METRICS_PORT"
+          DOCKER_ARGS+=(-p "$METRICS_PORT:$METRICS_PORT")
+        fi
+        
+        DOCKER_ARGS+=(
+          -v /var/run/docker.sock:/var/run/docker.sock
+          -v "$WORK_DIR":/_work
+          --restart unless-stopped
+          --name "$CONTAINER_NAME"
           "$DOCKER_IMAGE"
+        )
+        
+        # Execute docker run
+        docker run "$${DOCKER_ARGS[@]}"
         
         echo "  Container $CONTAINER_NAME started successfully"
       done
       
       echo "All runners started successfully!"
+  
+  - path: /opt/configure-logging.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      
+      ENABLE_LOGGING="${enable_centralized_logging}"
+      WORKSPACE_ID="${log_analytics_workspace_id}"
+      WORKSPACE_KEY="${log_analytics_workspace_key}"
+      
+      if [ "$ENABLE_LOGGING" != "true" ]; then
+        echo "Centralized logging is disabled"
+        exit 0
+      fi
+      
+      echo "Configuring Azure Log Analytics integration..."
+      
+      # Download and install OMS agent
+      wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh
+      chmod +x onboard_agent.sh
+      
+      # Extract workspace ID from full resource ID if needed
+      if [[ "$WORKSPACE_ID" == /subscriptions/* ]]; then
+        WORKSPACE_ID=$(basename "$WORKSPACE_ID")
+      fi
+      
+      # Install and onboard the agent
+      ./onboard_agent.sh -w "$WORKSPACE_ID" -s "$WORKSPACE_KEY" -d opinsights.azure.com
+      
+      # Configure custom log collection for runner logs
+      cat > /etc/opt/microsoft/omsagent/$WORKSPACE_ID/conf/omsagent.d/github-runner.conf << 'LOGEOF'
+<source>
+  type tail
+  path /var/log/github-runner-init.log
+  pos_file /var/opt/microsoft/omsagent/state/github-runner-init.pos
+  tag oms.github.runner.init
+  format none
+</source>
+
+<source>
+  type tail
+  path /var/log/vmss_monitor.log
+  pos_file /var/opt/microsoft/omsagent/state/vmss-monitor.pos
+  tag oms.github.runner.monitor
+  format none
+</source>
+LOGEOF
+      
+      # Restart OMS agent
+      /opt/microsoft/omsagent/bin/service_control restart "$WORKSPACE_ID"
+      
+      echo "Azure Log Analytics configured successfully"
 
 runcmd:
   # Start and enable Docker
@@ -142,6 +223,9 @@ runcmd:
   
   # Add ubuntu user to docker group
   - usermod -aG docker ubuntu
+  
+  # Configure centralized logging if enabled
+  - /opt/configure-logging.sh >> /var/log/logging-setup.log 2>&1
   
   # Set up VMSS monitoring cron job
   - (crontab -l 2>/dev/null; echo "* * * * * /opt/vmss_monitor.sh >> /var/log/vmss_monitor.log 2>&1") | crontab -

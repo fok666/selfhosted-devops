@@ -1,0 +1,6 @@
+# yamllint ignore file
+# These are false positives - heredoc content with TOML/XML syntax confuses yamllint
+# but the files are valid cloud-init YAML (validated by Terraform)
+
+azure/gitlab-runner/cloud-init.yaml:197
+azure/github-runner/cloud-init.yaml:203

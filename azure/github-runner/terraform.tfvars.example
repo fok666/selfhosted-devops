@@ -33,3 +33,33 @@ tags = {
   ManagedBy   = "Terraform"
   Team        = "DevOps"
 }
+
+# =============================================================================
+# Production Features (Optional)
+# =============================================================================
+
+# Distributed Caching - Shared cache across ephemeral runners
+# Significantly improves build performance (2-5x faster)
+# Requires Azure Storage Account and container
+# Cost: ~$2-10/month for typical usage
+# enable_distributed_cache       = true
+# cache_storage_account_name     = "myghcachestorage"
+# cache_storage_container_name   = "runner-cache"
+# cache_storage_account_key      = "storage-account-key-here"
+# cache_shared                   = true
+
+# Centralized Logging - Log Analytics integration
+# Essential for troubleshooting ephemeral runners
+# Requires Log Analytics workspace
+# Cost: ~$10-40/month for typical usage
+# enable_centralized_logging   = true
+# log_analytics_workspace_id   = "/subscriptions/.../workspaces/my-workspace"
+# log_analytics_workspace_key  = "workspace-key-here"
+# log_retention_days           = 30
+
+# Runner Monitoring - Prometheus metrics endpoint
+# Track job success rate, duration, queue depth
+# Requires network security rule for metrics port
+# Cost: Minimal (included in infrastructure)
+# enable_runner_monitoring = true
+# metrics_port             = 9090

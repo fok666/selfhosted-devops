@@ -42,6 +42,33 @@ tags = {
   ManagedBy   = "terraform"
 }
 
+# =============================================================================
+# PRODUCTION FEATURES (Optional - All Disabled by Default)
+# =============================================================================
+
+# ---------- Distributed Caching (Azure Blob Storage) ----------
+# Enable distributed cache sharing across agents for faster builds
+# Cost: ~$2-5/month for 100GB storage + transactions
+# enable_distributed_cache        = true
+# cache_storage_account_name      = "mydevopscache"      # Must be globally unique, 3-24 chars, lowercase/numbers only
+# cache_storage_container_name    = "agent-cache"
+# cache_shared                    = true                 # true = shared across agents, false = per-agent cache
+
+# ---------- Centralized Logging (Azure Log Analytics) ----------
+# Send agent logs to Azure Monitor for centralized log management
+# Cost: ~$2-10/month (first 5GB free, then $2.30/GB)
+# enable_centralized_logging      = true
+# log_analytics_workspace_id      = "your-workspace-id"
+# log_analytics_workspace_key     = "your-workspace-key"
+
+# ---------- Agent Monitoring (Prometheus Metrics) ----------
+# Expose Prometheus metrics endpoint for monitoring
+# Cost: Free (requires external Prometheus server)
+# enable_agent_monitoring         = true
+# metrics_port                    = 9090
+
+# =============================================================================
+
 # ============================================
 # COST ESTIMATES (with Spot instances)
 # ============================================
@@ -52,6 +79,15 @@ tags = {
 # - 1 instance (always-on): ~$5-8/month
 # - Scale 0-5 (10% utilization): ~$2-4/month
 # - Scale 0-10 (30% utilization): ~$15-25/month
+#
+# Production Features (Optional):
+# - Distributed Cache: +$2-5/month
+# - Centralized Logging: +$2-10/month (5GB free tier)
+# - Monitoring: Free (requires external Prometheus)
+#
+# Total with all features:
+# - Minimal usage: ~$6-12/month
+# - Medium usage: ~$25-40/month
 #
 # On-Demand (for comparison):
 # - 1 instance (always-on): ~$70/month

@@ -134,34 +134,38 @@ for R in $(seq 1 $RUNNER_COUNT); do
     docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
   fi
   
-  # Build docker run command dynamically
-  DOCKER_CMD="docker run --privileged --tty --detach --cpus=\"$${MAX_CPU}\""
-  DOCKER_CMD="$DOCKER_CMD -e GITLAB_URL=\"$GITLAB_URL\""
-  DOCKER_CMD="$DOCKER_CMD -e GITLAB_TOKEN=\"$GITLAB_TOKEN\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_NAME=\"$RUNNER_NAME\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_TAGS=\"$RUNNER_TAGS\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_EXECUTOR=\"docker\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_DOCKER_IMAGE=\"alpine:latest\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_RUN_UNTAGGED=\"false\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_LOCKED=\"false\""
-  DOCKER_CMD="$DOCKER_CMD -e RUNNER_ACCESS_LEVEL=\"not_protected\""
+  # Build docker run command safely using an array
+  DOCKER_ARGS=(
+    --privileged --tty --detach --cpus="$MAX_CPU"
+    -e GITLAB_URL="$GITLAB_URL"
+    -e GITLAB_TOKEN="$GITLAB_TOKEN"
+    -e RUNNER_NAME="$RUNNER_NAME"
+    -e RUNNER_TAGS="$RUNNER_TAGS"
+    -e RUNNER_EXECUTOR="docker"
+    -e RUNNER_DOCKER_IMAGE="alpine:latest"
+    -e RUNNER_RUN_UNTAGGED="false"
+    -e RUNNER_LOCKED="false"
+    -e RUNNER_ACCESS_LEVEL="not_protected"
+  )
   
   # Add monitoring configuration if enabled
   if [ "$ENABLE_MONITORING" = "true" ]; then
     echo "  Enabling Prometheus metrics on port $METRICS_PORT"
-    DOCKER_CMD="$DOCKER_CMD -p $METRICS_PORT:$METRICS_PORT"
-    DOCKER_CMD="$DOCKER_CMD -e RUNNER_LISTEN_ADDRESS=\":$METRICS_PORT\""
+    DOCKER_ARGS+=(-p "$METRICS_PORT:$METRICS_PORT")
+    DOCKER_ARGS+=(-e "RUNNER_LISTEN_ADDRESS=:$METRICS_PORT")
   fi
   
-  DOCKER_CMD="$DOCKER_CMD -v \"$CONFIG_DIR\":/etc/gitlab-runner"
-  DOCKER_CMD="$DOCKER_CMD -v \"$DATA_DIR\":/runner"
-  DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
-  DOCKER_CMD="$DOCKER_CMD --restart unless-stopped"
-  DOCKER_CMD="$DOCKER_CMD --name \"$CONTAINER_NAME\""
-  DOCKER_CMD="$DOCKER_CMD \"$DOCKER_IMAGE\""
+  DOCKER_ARGS+=(
+    -v "$CONFIG_DIR":/etc/gitlab-runner
+    -v "$DATA_DIR":/runner
+    -v /var/run/docker.sock:/var/run/docker.sock
+    --restart unless-stopped
+    --name "$CONTAINER_NAME"
+    "$DOCKER_IMAGE"
+  )
   
   # Execute docker run
-  eval "$DOCKER_CMD"
+  docker run "$${DOCKER_ARGS[@]}"
   
   echo "  Container $CONTAINER_NAME started successfully"
   
@@ -220,6 +224,7 @@ chmod +x /opt/run-gitlab-runners.sh
 sleep 10
 
 # Configure CloudWatch Logs if enabled
+# shellcheck disable=SC2154  # enable_centralized_logging is injected by Terraform templatefile()
 ENABLE_LOGGING="${enable_centralized_logging}"
 if [ "$ENABLE_LOGGING" = "true" ]; then
   echo "Configuring CloudWatch Logs..."

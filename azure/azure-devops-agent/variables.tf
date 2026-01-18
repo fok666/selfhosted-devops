@@ -472,3 +472,209 @@ variable "tags" {
     Purpose     = "azure-devops-agent"
   }
 }
+
+# =============================================================================
+# Production Features - Distributed Caching (Optional)
+# =============================================================================
+
+variable "enable_distributed_cache" {
+  description = <<-EOT
+    Enable distributed caching using Azure Blob Storage for shared cache across ephemeral agents.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ 2-5x faster builds (shared cache across ephemeral agents)
+    - ✓ Consistent performance even when instances are replaced
+    - ✓ Reduces bandwidth and package download costs
+    - ✓ Works with autoscaling and spot instances
+    
+    **Cost Impact:**
+    - Blob Storage: ~$0.018/GB/month (Hot tier)
+    - Typical usage: 10-50 GB = $0.18-$0.90/month
+    - Total estimated cost: $2-10/month for typical workloads
+    
+    **Default:** false (backward compatible)
+    **Requires:** Storage account, container, IAM permissions
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cache_storage_account_name" {
+  description = <<-EOT
+    Name of the Azure Storage Account for distributed caching.
+    
+    **Requirements:**
+    - Must be globally unique across all Azure accounts
+    - 3-24 characters, lowercase letters and numbers only
+    - No hyphens or special characters allowed
+    
+    **Example:** "mycompanyazdevopscache"
+    
+    **Required when:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_name != "")
+    error_message = "cache_storage_account_name is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_storage_container_name" {
+  description = <<-EOT
+    Name of the blob container within the storage account for caching.
+    
+    **Use Cases:**
+    - Separate containers per environment: "prod-cache", "dev-cache"
+    - Separate by team: "team-backend-cache", "team-frontend-cache"
+    - Share across organization: "agent-cache"
+    
+    **Default:** "agent-cache"
+  EOT
+  type        = string
+  default     = "agent-cache"
+}
+
+variable "cache_storage_account_key" {
+  description = <<-EOT
+    Storage account access key for authentication to the cache storage.
+    
+    **Security:**
+    - Marked as sensitive (won't appear in logs)
+    - Use Azure Key Vault for production deployments
+    - Rotate keys regularly
+    
+    **How to obtain:**
+    1. Go to Azure Portal → Storage Accounts → Your account
+    2. Click "Access keys" under Security + networking
+    3. Copy key1 or key2
+    
+    **Required when:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_key != "")
+    error_message = "cache_storage_account_key is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Enable cache sharing across all agents.
+    
+    **Options:**
+    - true: All agents share the same cache (recommended for teams)
+    - false: Each agent has its own isolated cache
+    
+    **Benefits of shared cache:**
+    - ✓ Better cache hit rate
+    - ✓ Faster build times for teams
+    - ✓ Reduced bandwidth usage
+    
+    **Recommendation:** true (faster builds, better cache hit rate)
+    
+    **Default:** true
+  EOT
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# Production Features - Centralized Logging (Optional)
+# =============================================================================
+
+variable "enable_centralized_logging" {
+  description = <<-EOT
+    Enable centralized logging using Azure Log Analytics for agent logs.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Essential for troubleshooting ephemeral agents
+    - ✓ Long-term log retention (30-730 days)
+    - ✓ Advanced search with KQL
+    - ✓ Integration with Azure Monitor
+    
+    **Cost Impact:**
+    - Data ingestion: ~$2.76/GB
+    - Typical usage: 2-10 GB/month = $5.52-$27.60/month
+    
+    **Default:** false (backward compatible)
+    **Requires:** Log Analytics workspace, RBAC permissions
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "log_analytics_workspace_id" {
+  description = "Azure Log Analytics Workspace ID (required if enable_centralized_logging = true)"
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_id != "")
+    error_message = "log_analytics_workspace_id is required when enable_centralized_logging is true"
+  }
+}
+
+variable "log_analytics_workspace_key" {
+  description = "Azure Log Analytics Workspace key (required if enable_centralized_logging = true)"
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_key != "")
+    error_message = "log_analytics_workspace_key is required when enable_centralized_logging is true"
+  }
+}
+
+variable "log_retention_days" {
+  description = "Number of days to retain logs (30-730)"
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_days >= 30 && var.log_retention_days <= 730
+    error_message = "log_retention_days must be between 30 and 730 days"
+  }
+}
+
+# =============================================================================
+# Production Features - Agent Monitoring (Optional)
+# =============================================================================
+
+variable "enable_agent_monitoring" {
+  description = <<-EOT
+    Enable Prometheus metrics endpoint for agent monitoring.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Track job success rate, duration, queue depth
+    - ✓ Integration with Grafana, Azure Monitor
+    - ✓ Proactive alerting on issues
+    
+    **Cost Impact:** Minimal (included in infrastructure)
+    **Default:** false (backward compatible)
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "metrics_port" {
+  description = "Port for Prometheus metrics endpoint"
+  type        = number
+  default     = 9090
+
+  validation {
+    condition     = var.metrics_port >= 1024 && var.metrics_port <= 65535
+    error_message = "metrics_port must be between 1024 and 65535"
+  }
+}

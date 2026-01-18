@@ -82,6 +82,18 @@ AZP_POOL="${azp_pool}"
 AZP_AGENT_NAME_PREFIX="${azp_agent_name}"
 AGENT_COUNT="${agent_count}"
 
+# Production Features Configuration
+ENABLE_CACHE="${enable_distributed_cache}"
+CACHE_S3_BUCKET="${cache_s3_bucket_name}"
+CACHE_S3_REGION="${cache_s3_region}"
+CACHE_S3_PREFIX="${cache_s3_prefix}"
+CACHE_SHARED="${cache_shared}"
+ENABLE_LOGGING="${enable_centralized_logging}"
+CLOUDWATCH_LOG_GROUP="${cloudwatch_log_group_name}"
+CLOUDWATCH_LOG_REGION="${cloudwatch_log_region}"
+ENABLE_MONITORING="${enable_agent_monitoring}"
+METRICS_PORT="${metrics_port}"
+
 # Auto-detect agent count based on CPU count if agent_count is 0
 if [ "$AGENT_COUNT" = "0" ]; then
   CPU_COUNT=$(nproc)
@@ -106,6 +118,32 @@ fi
 CPU_COUNT=$(nproc)
 MAX_CPU=$((CPU_COUNT / AGENT_COUNT))
 [ $MAX_CPU -lt 1 ] && MAX_CPU=1
+
+# Configure distributed cache if enabled
+CACHE_ENV_VARS=""
+if [ "$ENABLE_CACHE" = "true" ]; then
+  echo "Configuring distributed cache (S3)..."
+  CACHE_ENV_VARS="-e CACHE_ENABLED=true \
+    -e CACHE_TYPE=s3 \
+    -e AWS_S3_BUCKET=$CACHE_S3_BUCKET \
+    -e AWS_REGION=$CACHE_S3_REGION \
+    -e AWS_S3_PREFIX=$CACHE_S3_PREFIX \
+    -e CACHE_SHARED=$CACHE_SHARED"
+  echo "  Cache S3 bucket: $CACHE_S3_BUCKET"
+  echo "  Cache S3 region: $CACHE_S3_REGION"
+  echo "  Cache S3 prefix: $CACHE_S3_PREFIX"
+  echo "  Shared cache: $CACHE_SHARED"
+fi
+
+# Configure monitoring if enabled
+MONITORING_ENV_VARS=""
+MONITORING_PORT=""
+if [ "$ENABLE_MONITORING" = "true" ]; then
+  echo "Enabling agent monitoring (Prometheus metrics)..."
+  MONITORING_ENV_VARS="-e METRICS_ENABLED=true -e METRICS_PORT=$METRICS_PORT"
+  MONITORING_PORT="-p $METRICS_PORT:$METRICS_PORT"
+  echo "  Metrics port: $METRICS_PORT"
+fi
 
 echo "Starting $AGENT_COUNT Azure DevOps agent(s)..."
 
@@ -133,8 +171,11 @@ for A in $(seq 1 $AGENT_COUNT); do
     -e AZP_POOL="$AZP_POOL" \
     -e AZP_AGENT_NAME="$AZP_AGENT_NAME" \
     -e AZP_WORK="/_work" \
+    $CACHE_ENV_VARS \
+    $MONITORING_ENV_VARS \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$WORK_DIR":/_work \
+    $MONITORING_PORT \
     --privileged \
     fok666/azuredevops:latest
   
@@ -251,6 +292,48 @@ CRON_MONITOR
 # Reload systemd
 echo "Reloading systemd..."
 systemctl daemon-reload
+
+# Install and configure CloudWatch Agent if centralized logging is enabled
+if [ "${enable_centralized_logging}" = "true" ]; then
+  echo "Installing Amazon CloudWatch Agent for centralized logging..."
+  wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+  dpkg -i amazon-cloudwatch-agent.deb
+  
+  # Create CloudWatch agent configuration
+  cat > /opt/aws/amazon-cloudwatch-agent/etc/config.json << EOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/azdevops-agent-init.log",
+            "log_group_name": "${cloudwatch_log_group_name}",
+            "log_stream_name": "{instance_id}/azdevops-agent-init.log",
+            "timezone": "UTC"
+          },
+          {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "${cloudwatch_log_group_name}",
+            "log_stream_name": "{instance_id}/syslog",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+  
+  # Start CloudWatch agent
+  /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/config.json
+  
+  echo "CloudWatch Agent installed and configured"
+fi
 
 # Start agent
 echo "Starting Azure DevOps agent..."

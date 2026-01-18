@@ -447,3 +447,268 @@ variable "tags" {
     ManagedBy   = "Terraform"
   }
 }
+
+# =============================================================================
+# Production Features - Distributed Caching (Optional)
+# =============================================================================
+
+variable "enable_distributed_cache" {
+  description = <<-EOT
+    Enable distributed caching using Azure Blob Storage for shared cache across ephemeral runners.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ 2-5x faster builds (shared cache across ephemeral runners)
+    - ✓ Consistent performance even when instances are replaced
+    - ✓ Reduces bandwidth and package download costs
+    - ✓ Works with autoscaling and spot instances
+    
+    **Cost Impact:**
+    - Blob Storage: ~$0.018/GB/month (Hot tier)
+    - Typical usage: 10-50 GB = $0.18-$0.90/month
+    - Transactions: ~$0.0004 per 10,000 operations
+    - Total estimated cost: $2-10/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments with frequent builds
+    - ✓ Large codebases with significant dependencies
+    - ✓ Teams prioritizing build speed
+    
+    **Default:** false (backward compatible)
+    **Requires:** Storage account, container, IAM permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "cache_storage_account_name" {
+  description = <<-EOT
+    Name of the Azure Storage Account for distributed caching.
+    
+    **Requirements:**
+    - Storage account must exist before deployment
+    - Must be in the same region as runners for best performance
+    - Requires appropriate RBAC permissions
+    
+    **Example:** "myghcachestorage"
+    
+    **Required if:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_name != "")
+    error_message = "cache_storage_account_name is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_storage_container_name" {
+  description = <<-EOT
+    Name of the blob container for caching.
+    
+    **Best Practice:** Use descriptive name like "github-runner-cache"
+    
+    **Note:** Container will be created if it doesn't exist
+    
+    **Default:** "runner-cache"
+  EOT
+  type        = string
+  default     = "runner-cache"
+}
+
+variable "cache_storage_account_key" {
+  description = <<-EOT
+    Storage account access key for authentication.
+    
+    **Security:** Mark as sensitive, use Azure Key Vault in production
+    
+    **Alternative:** Use managed identity (future enhancement)
+    
+    **Required if:** enable_distributed_cache = true
+  EOT
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_key != "")
+    error_message = "cache_storage_account_key is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Share cache between all runners vs. per-runner caching.
+    
+    **Shared Cache (true - RECOMMENDED):**
+    - ✓ Better cache hit rate across all runners
+    - ✓ Faster builds for common dependencies
+    - ✓ Lower storage costs
+    - ⚠️ Requires careful cache key management
+    
+    **Per-Runner Cache (false):**
+    - ✓ Isolated cache per runner
+    - ✓ Better for different workloads
+    - ⚠️ Higher storage costs
+    - ⚠️ Lower cache hit rate
+    
+    **Default:** true (shared cache)
+  EOT
+  type        = bool
+  default     = true
+}
+
+# =============================================================================
+# Production Features - Centralized Logging (Optional)
+# =============================================================================
+
+variable "enable_centralized_logging" {
+  description = <<-EOT
+    Enable centralized logging using Azure Log Analytics for runner logs and job output.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Essential for troubleshooting ephemeral runners
+    - ✓ Long-term log retention (30-730 days)
+    - ✓ Advanced search with KQL (Kusto Query Language)
+    - ✓ Integration with Azure Monitor
+    - ✓ Alerting on errors and anomalies
+    
+    **Cost Impact:**
+    - Data ingestion: ~$2.76/GB
+    - Data retention (first 31 days): Free
+    - Extended retention: ~$0.12/GB/month
+    - Typical usage: 2-10 GB/month = $5.52-$27.60/month
+    - Total estimated cost: $10-40/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments requiring audit trail
+    - ✓ Compliance requirements (SOC2, ISO27001)
+    - ✓ Teams needing advanced troubleshooting
+    - ✓ Large teams with many concurrent jobs
+    
+    **Default:** false (backward compatible)
+    **Requires:** Log Analytics workspace, RBAC permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "log_analytics_workspace_id" {
+  description = <<-EOT
+    Azure Log Analytics Workspace ID for centralized logging.
+    
+    **Format:** Full resource ID like:
+    /subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.OperationalInsights/workspaces/{workspace-name}
+    
+    **Required if:** enable_centralized_logging = true
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_id != "")
+    error_message = "log_analytics_workspace_id is required when enable_centralized_logging is true"
+  }
+}
+
+variable "log_analytics_workspace_key" {
+  description = <<-EOT
+    Azure Log Analytics Workspace primary or secondary key.
+    
+    **Security:** Marked as sensitive, use Azure Key Vault in production
+    
+    **Required if:** enable_centralized_logging = true
+  EOT
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_key != "")
+    error_message = "log_analytics_workspace_key is required when enable_centralized_logging is true"
+  }
+}
+
+variable "log_retention_days" {
+  description = <<-EOT
+    Number of days to retain logs in Log Analytics workspace.
+    
+    **Common Values:**
+    - 30: One month (FREE with workspace, RECOMMENDED)
+    - 90: Three months (compliance, ~$0.12/GB/month)
+    - 180: Six months (extended compliance)
+    - 365: One year (strict compliance)
+    - 730: Two years (regulatory requirements)
+    
+    **Cost Impact:**
+    - 0-31 days: Included with workspace (free)
+    - 31+ days: ~$0.12/GB/month for extended retention
+    
+    **Default:** 30 days (free tier)
+  EOT
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.log_retention_days >= 30 && var.log_retention_days <= 730
+    error_message = "log_retention_days must be between 30 and 730 days"
+  }
+}
+
+# =============================================================================
+# Production Features - Runner Monitoring (Optional)
+# =============================================================================
+
+variable "enable_runner_monitoring" {
+  description = <<-EOT
+    Enable Prometheus metrics endpoint for runner monitoring and observability.
+    
+    ✨ NEW PRODUCTION FEATURE
+    
+    **Benefits:**
+    - ✓ Track job success rate, duration, queue depth
+    - ✓ Monitor runner health and performance
+    - ✓ Integration with Grafana, Azure Monitor, Datadog
+    - ✓ Proactive alerting on issues
+    - ✓ Capacity planning insights
+    
+    **Cost Impact:**
+    - Azure Monitor metrics: ~$0.25/metric/month
+    - Typical usage: 10-30 custom metrics = $2.50-$7.50/month
+    - Total estimated cost: Minimal (included in infrastructure)
+    
+    **When to Enable:**
+    - ✓ Production deployments
+    - ✓ Teams requiring SLA tracking
+    - ✓ Organizations with existing monitoring stack
+    
+    **Default:** false (backward compatible)
+    **Requires:** Network security rule for metrics port
+    **See:** PRODUCTION_FEATURES.md for Grafana integration
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "metrics_port" {
+  description = <<-EOT
+    Port for Prometheus metrics endpoint.
+    
+    **Default:** 9090 (Prometheus standard port)
+    
+    **Security:** Ensure this port is only accessible from your monitoring infrastructure
+  EOT
+  type        = number
+  default     = 9090
+
+  validation {
+    condition     = var.metrics_port >= 1024 && var.metrics_port <= 65535
+    error_message = "metrics_port must be between 1024 and 65535"
+  }
+}
