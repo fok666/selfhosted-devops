@@ -418,6 +418,8 @@ variable "associate_public_ip_address" {
   default     = false
 }
 
+# trivy:ignore:AVD-AWS-0104 "Unrestricted egress required for CI/CD: GitHub, Docker Hub, package repos, etc."
+# tfsec:ignore:aws-ec2-no-public-egress-sgr "CI/CD runners require internet access for typical operations"
 variable "egress_cidr_blocks" {
   description = <<-EOT
     CIDR blocks for outbound traffic from security group - USE WITH UNDERSTANDING.
@@ -447,48 +449,48 @@ variable "egress_cidr_blocks" {
 variable "egress_from_port" {
   description = <<-EOT
     Starting port for outbound traffic - USE WITH UNDERSTANDING.
-    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    Default 443 with protocol "tcp" allows HTTPS traffic only.
     
     Common port restrictions:
     - 443 only: HTTPS traffic only (may break some CI/CD operations)
     - 80,443: HTTP/HTTPS only
-    - 0: All ports (default, required for typical CI/CD)
+    - 0: All ports (required for some CI/CD operations)
     
     Note: When protocol is "-1" (all), this must be 0.
-    Default: 0 (all ports)
+    Default: 443 (HTTPS only)
   EOT
   type        = number
-  default     = 0
+  default     = 443
 }
 
 variable "egress_to_port" {
   description = <<-EOT
     Ending port for outbound traffic - USE WITH UNDERSTANDING.
-    Default 0 with protocol "-1" allows all ports, which is typically required for CI/CD.
+    Default 443 with protocol "tcp" allows HTTPS traffic only.
     
     Note: When protocol is "-1" (all), this must be 0.
-    Default: 0 (all ports)
+    Default: 443 (HTTPS only)
   EOT
   type        = number
-  default     = 0
+  default     = 443
 }
 
 variable "egress_protocol" {
   description = <<-EOT
     Protocol for outbound traffic - USE WITH UNDERSTANDING.
-    Default "-1" allows all protocols (TCP, UDP, ICMP, etc.), required for typical CI/CD.
+    Default "tcp" allows TCP traffic only (e.g., HTTPS on port 443).
     
     Common values:
-    - "-1": All protocols (default, required for typical CI/CD)
-    - "tcp": TCP only (port 6)
+    - "tcp": TCP only (default, for HTTPS/HTTP traffic)
     - "udp": UDP only (port 17)
     - "icmp": ICMP only (port 1)
+    - "-1": All protocols (required for some CI/CD operations)
     
     Note: Use protocol numbers (6 for TCP, 17 for UDP) or "-1" for all.
-    Default: "-1" (all protocols)
+    Default: "tcp" (TCP only)
   EOT
   type        = string
-  default     = "-1"
+  default     = "tcp"
 }
 
 variable "tags" {

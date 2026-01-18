@@ -135,6 +135,8 @@ variable "nsg_outbound_destination_port_range" {
   default     = "443"
 }
 
+# trivy:ignore:AVD-AZU-0047 "Unrestricted outbound internet required for CI/CD: Azure DevOps, Docker Hub, package repos, etc."
+# tfsec:ignore:azure-network-no-public-egress "CI/CD runners require internet access for typical operations"
 variable "nsg_outbound_destination_address_prefix" {
   description = <<-EOT
     Destination address prefix for default NSG outbound rule - USE WITH UNDERSTANDING.
