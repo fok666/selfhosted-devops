@@ -50,20 +50,20 @@ locals {
     runner_count        = var.runner_count_per_instance
     docker_image        = var.docker_image
     runner_docker_image = "fok666/github-runner:latest"
-    
+
     # Production Features - Distributed Caching
-    enable_distributed_cache      = var.enable_distributed_cache
-    cache_storage_account_name    = var.cache_storage_account_name
-    cache_storage_container_name  = var.cache_storage_container_name
-    cache_storage_account_key     = var.cache_storage_account_key
-    cache_shared                  = var.cache_shared
-    
+    enable_distributed_cache     = var.enable_distributed_cache
+    cache_storage_account_name   = var.cache_storage_account_name
+    cache_storage_container_name = var.cache_storage_container_name
+    cache_storage_account_key    = var.cache_storage_account_key
+    cache_shared                 = var.cache_shared
+
     # Production Features - Centralized Logging
     enable_centralized_logging  = var.enable_centralized_logging
     log_analytics_workspace_id  = var.log_analytics_workspace_id
     log_analytics_workspace_key = var.log_analytics_workspace_key
     log_retention_days          = var.log_retention_days
-    
+
     # Production Features - Runner Monitoring
     enable_runner_monitoring = var.enable_runner_monitoring
     metrics_port             = var.metrics_port
