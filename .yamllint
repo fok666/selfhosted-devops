@@ -1,0 +1,38 @@
+---
+# yamllint configuration for cloud-init YAML files
+# Cloud-init files contain embedded bash scripts with heredocs that include
+# non-YAML content (TOML, XML, etc.) which yamllint incorrectly flags as errors.
+
+extends: default
+
+rules:
+  # Allow longer lines for URLs and complex bash commands
+  line-length:
+    max: 120
+    level: warning
+  
+  # Disable trailing spaces check (common in embedded bash scripts)
+  trailing-spaces: disable
+  
+  # Allow flexible comment formatting
+  comments:
+    min-spaces-from-content: 1
+  
+  # Document start is optional for cloud-init
+  document-start: disable
+  
+  # Allow empty values (common in cloud-init)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+  
+  # Be lenient with indentation in multi-line strings
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  
+  # Allow truthy values (yes/no, true/false, on/off)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
