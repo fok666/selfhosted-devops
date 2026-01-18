@@ -33,6 +33,8 @@ Choose the runner that matches your CI/CD platform:
 
 ## Features
 
+### Core Features
+
 ✅ **Autoscaling** - VMSS (Azure) and Auto Scaling Groups (AWS)  
 ✅ **Spot/Preemptible Instances** - Up to 90% cost savings  
 ✅ **Ephemeral Runners** - On-demand, self-configuring instances  
@@ -44,6 +46,15 @@ Choose the runner that matches your CI/CD platform:
 ✅ **Graceful Shutdown** - Monitors termination events and stops runners cleanly  
 ✅ **Multi-Cloud** - Identical configurations for Azure and AWS  
 ✅ **Cost/Performance Documentation** - Clear tradeoffs for every configuration option
+
+### Production-Ready Features ✨ NEW
+
+✅ **Distributed Caching** - Azure Blob Storage / S3 cache for faster builds  
+✅ **Centralized Logging** - Azure Log Analytics / CloudWatch integration  
+✅ **Runner Monitoring** - Prometheus metrics for observability  
+✅ **Webhook-Based Scaling** - GitHub Actions webhook triggers (responsive scaling)  
+✅ **Enhanced Security** - IMDSv2, encrypted disks, least privilege IAM  
+✅ **Comprehensive Testing** - Automated Terraform tests included
 
 📐 **See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture diagrams and explanations.**
 
@@ -185,6 +196,90 @@ All implementations support the following key parameters:
 - **Availability Zones** - Multi-zone deployment for high availability (default: zones 1, 2, 3)
 - **Custom Scripts** - User data for additional configuration
 
+### Production Features (Optional) ✨ NEW
+
+**Enable these features for production deployments:**
+
+#### 🗄️ Distributed Caching
+
+Significantly faster builds by sharing cached dependencies between ephemeral runners.
+
+```hcl
+# Azure Blob Storage
+enable_distributed_cache     = true
+cache_storage_account_name   = "mycompanyrunnercache"
+cache_storage_container_name = "runner-cache"
+cache_shared                 = true
+
+# AWS S3
+enable_distributed_cache = true
+cache_s3_bucket_name     = "my-runner-cache"
+cache_shared             = true
+```
+
+**Benefits:**
+- ⚡ 2-5x faster builds (no re-downloading dependencies)
+- 💰 Reduced bandwidth costs
+- 🎯 Essential for ephemeral runners
+
+**Cost:** ~$0.02/GB/month (Azure Blob) or ~$0.023/GB/month (S3)
+
+#### 📊 Centralized Logging
+
+Forward runner logs to Azure Log Analytics or CloudWatch for troubleshooting.
+
+```hcl
+# Azure Log Analytics
+enable_centralized_logging  = true
+log_analytics_workspace_id  = "/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{ws}"
+log_analytics_workspace_key = "your-workspace-key"
+log_retention_days          = 30
+
+# AWS CloudWatch
+enable_centralized_logging = true
+cloudwatch_log_group_name  = "/aws/runners/gitlab"
+log_retention_days         = 30
+```
+
+**Benefits:**
+- 🔍 Troubleshoot ephemeral runners after termination
+- 📈 Long-term log retention for compliance
+- 🚨 Advanced alerting and anomaly detection
+
+**Cost:** ~$0.50/GB ingested + $0.03/GB/month retention
+
+#### 📈 Runner Monitoring
+
+Expose Prometheus metrics for observability and alerting.
+
+```hcl
+enable_runner_monitoring = true
+metrics_port             = 9252
+```
+
+**Benefits:**
+- 📊 Track job duration, queue depth, success rate
+- 🎯 Proactive alerting on runner failures
+- 📉 Capacity planning insights
+
+**Integration:** Connect to Grafana, Azure Monitor, or CloudWatch
+
+#### ⚡ Webhook-Based Scaling (GitHub Actions)
+
+Scale runners instantly based on workflow job events.
+
+```hcl
+enable_webhook_scaling = true
+webhook_secret         = "your-secret-key"
+```
+
+**Benefits:**
+- ⚡ Instant response to job queues (vs 5-10 min with CPU-based scaling)
+- 💰 More efficient resource utilization
+- 🎯 No waiting for runners to spin up
+
+**Setup:** Configure webhook in GitHub repository/organization settings
+
 ### Default Configuration Philosophy
 
 Defaults are optimized for:
@@ -192,6 +287,8 @@ Defaults are optimized for:
 - ✅ **Maximum Security**: SSH disabled, encrypted disks, least privilege IAM
 - ✅ **Sufficient Performance**: StandardSSD disks, balanced VM sizes
 - ⚙️ **Easy Customization**: All settings adjustable with clear tradeoff documentation
+
+**Production Recommendation:** Enable distributed caching, logging, and monitoring for best results.
 
 ### Security Configuration
 

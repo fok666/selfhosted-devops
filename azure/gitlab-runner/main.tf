@@ -44,12 +44,23 @@ locals {
   runner_name = "${var.project_name}-gitlab-runner"
 
   cloud_init = templatefile("${path.module}/cloud-init.yaml", {
-    gitlab_url          = var.gitlab_url
-    gitlab_token        = var.gitlab_token
-    runner_tags         = var.runner_tags
-    runner_count        = var.runner_count_per_instance
-    docker_image        = var.docker_image
-    runner_docker_image = "fok666/gitlab-runner:latest"
+    gitlab_url                   = var.gitlab_url
+    gitlab_token                 = var.gitlab_token
+    runner_tags                  = var.runner_tags
+    runner_count                 = var.runner_count_per_instance
+    docker_image                 = var.docker_image
+    runner_docker_image          = "fok666/gitlab-runner:latest"
+    enable_distributed_cache     = var.enable_distributed_cache
+    cache_type                   = var.cache_type
+    cache_shared                 = var.cache_shared
+    cache_storage_account_name   = var.cache_storage_account_name
+    cache_storage_container_name = var.cache_storage_container_name
+    cache_storage_account_key    = var.cache_storage_account_key
+    enable_centralized_logging   = var.enable_centralized_logging
+    log_analytics_workspace_id   = var.log_analytics_workspace_id
+    log_analytics_workspace_key  = var.log_analytics_workspace_key
+    enable_runner_monitoring     = var.enable_runner_monitoring
+    metrics_port                 = var.metrics_port
   })
 }
 
