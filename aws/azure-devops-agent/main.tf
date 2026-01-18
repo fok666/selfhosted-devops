@@ -74,11 +74,21 @@ resource "aws_iam_instance_profile" "agent" {
 
 locals {
   user_data_rendered = templatefile("${path.module}/user-data.sh", {
-    azp_url        = var.azp_url
-    azp_token      = var.azp_token
-    azp_pool       = var.azp_pool
-    azp_agent_name = var.azp_agent_name_prefix
-    agent_count    = var.agent_count_per_instance
+    azp_url                    = var.azp_url
+    azp_token                  = var.azp_token
+    azp_pool                   = var.azp_pool
+    azp_agent_name             = var.azp_agent_name_prefix
+    agent_count                = var.agent_count_per_instance
+    enable_distributed_cache   = var.enable_distributed_cache
+    cache_s3_bucket_name       = var.cache_s3_bucket_name
+    cache_s3_region            = var.cache_s3_region != "" ? var.cache_s3_region : var.aws_region
+    cache_s3_prefix            = var.cache_s3_prefix
+    cache_shared               = var.cache_shared
+    enable_centralized_logging = var.enable_centralized_logging
+    cloudwatch_log_group_name  = var.cloudwatch_log_group_name
+    cloudwatch_log_region      = var.aws_region
+    enable_agent_monitoring    = var.enable_agent_monitoring
+    metrics_port               = var.metrics_port
   })
 }
 

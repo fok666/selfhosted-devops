@@ -31,6 +31,18 @@ write_files:
       AZP_AGENT_NAME_PREFIX="${azp_agent_name}"
       AGENT_COUNT="${agent_count}"
       
+      # Production Features Configuration
+      ENABLE_CACHE="${enable_distributed_cache}"
+      CACHE_STORAGE_ACCOUNT="${cache_storage_account_name}"
+      CACHE_CONTAINER="${cache_storage_container_name}"
+      CACHE_STORAGE_KEY="${cache_storage_account_key}"
+      CACHE_SHARED="${cache_shared}"
+      ENABLE_LOGGING="${enable_centralized_logging}"
+      LOG_ANALYTICS_WORKSPACE_ID="${log_analytics_workspace_id}"
+      LOG_ANALYTICS_WORKSPACE_KEY="${log_analytics_workspace_key}"
+      ENABLE_MONITORING="${enable_agent_monitoring}"
+      METRICS_PORT="${metrics_port}"
+      
       # Auto-detect agent count based on CPU count if agent_count is 0
       if [ "$AGENT_COUNT" = "0" ]; then
         CPU_COUNT=$(nproc)
@@ -55,6 +67,31 @@ write_files:
       CPU_COUNT=$(nproc)
       MAX_CPU=$((CPU_COUNT / AGENT_COUNT))
       [ $MAX_CPU -lt 1 ] && MAX_CPU=1
+      
+      # Configure distributed cache if enabled
+      CACHE_ENV_VARS=""
+      if [ "$ENABLE_CACHE" = "true" ]; then
+        echo "Configuring distributed cache (Azure Blob Storage)..."
+        CACHE_ENV_VARS="-e CACHE_ENABLED=true \
+          -e CACHE_TYPE=azure \
+          -e AZURE_STORAGE_ACCOUNT=$CACHE_STORAGE_ACCOUNT \
+          -e AZURE_STORAGE_KEY=$CACHE_STORAGE_KEY \
+          -e AZURE_STORAGE_CONTAINER=$CACHE_CONTAINER \
+          -e CACHE_SHARED=$CACHE_SHARED"
+        echo "  Cache storage account: $CACHE_STORAGE_ACCOUNT"
+        echo "  Cache container: $CACHE_CONTAINER"
+        echo "  Shared cache: $CACHE_SHARED"
+      fi
+      
+      # Configure monitoring if enabled
+      MONITORING_ENV_VARS=""
+      MONITORING_PORT=""
+      if [ "$ENABLE_MONITORING" = "true" ]; then
+        echo "Enabling agent monitoring (Prometheus metrics)..."
+        MONITORING_ENV_VARS="-e METRICS_ENABLED=true -e METRICS_PORT=$METRICS_PORT"
+        MONITORING_PORT="-p $METRICS_PORT:$METRICS_PORT"
+        echo "  Metrics port: $METRICS_PORT"
+      fi
       
       # Validate required variables
       if [ -z "$AZP_URL" ] || [ -z "$AZP_TOKEN" ] || [ -z "$AZP_POOL" ]; then
@@ -91,8 +128,11 @@ write_files:
           -e AZP_POOL="$AZP_POOL" \
           -e AZP_AGENT_NAME="$AZP_AGENT_NAME" \
           -e AZP_WORK="/_work" \
+          $CACHE_ENV_VARS \
+          $MONITORING_ENV_VARS \
           -v /var/run/docker.sock:/var/run/docker.sock \
           -v "$WORK_DIR":/_work \
+          $MONITORING_PORT \
           --privileged \
           fok666/azuredevops:latest
         
@@ -100,6 +140,21 @@ write_files:
       done
       
       echo "All agents started successfully!"
+      
+      # Install Azure Monitor Agent (OMS) if centralized logging is enabled
+      if [ "$ENABLE_LOGGING" = "true" ]; then
+        echo "Installing Azure Monitor Agent for centralized logging..."
+        if [ ! -z "$LOG_ANALYTICS_WORKSPACE_ID" ] && [ ! -z "$LOG_ANALYTICS_WORKSPACE_KEY" ]; then
+          wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh
+          sh onboard_agent.sh -w "$LOG_ANALYTICS_WORKSPACE_ID" -s "$LOG_ANALYTICS_WORKSPACE_KEY" -d opinsights.azure.com
+          
+          # Configure syslog and Docker logs collection
+          sudo /opt/microsoft/omsagent/bin/service_control restart "$LOG_ANALYTICS_WORKSPACE_ID"
+          echo "Azure Monitor Agent installed and configured"
+        else
+          echo "WARNING: Centralized logging enabled but workspace credentials not provided"
+        fi
+      fi
 
   # Agent stop script (for graceful shutdown)
   - path: /usr/local/bin/stop_azdevops_agent.sh
