@@ -449,21 +449,35 @@ variable "tags" {
 }
 
 # =============================================================================
-# Distributed Caching Configuration (Optional)
+# Production Features - Distributed Caching (Optional)
 # =============================================================================
 
 variable "enable_distributed_cache" {
   description = <<-EOT
-    Enable distributed cache for runners (RECOMMENDED for production).
+    Enable distributed caching using Azure Blob Storage for shared cache across ephemeral runners.
     
-    Benefits:
-    - Shares cached dependencies between ephemeral runners
-    - Significantly faster builds (avoids re-downloading dependencies)
-    - Required for effective autoscaling with ephemeral runners
+    ✨ NEW PRODUCTION FEATURE
     
-    Cost Impact: Storage costs (~$0.02/GB/month for Blob Storage)
+    **Benefits:**
+    - ✓ 2-5x faster builds (shared cache across ephemeral runners)
+    - ✓ Consistent performance even when instances are replaced
+    - ✓ Reduces bandwidth and package download costs
+    - ✓ Works with autoscaling and spot instances
     
-    Default: false (for backward compatibility)
+    **Cost Impact:**
+    - Blob Storage: ~$0.018/GB/month (Hot tier)
+    - Typical usage: 10-50 GB = $0.18-$0.90/month
+    - Transactions: ~$0.0004 per 10,000 operations
+    - Total estimated cost: $2-10/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments with frequent builds
+    - ✓ Large codebases with significant dependencies
+    - ✓ Teams prioritizing build speed
+    
+    **Default:** false (backward compatible)
+    **Requires:** Storage account, container, IAM permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
   EOT
   type        = bool
   default     = false
@@ -471,8 +485,12 @@ variable "enable_distributed_cache" {
 
 variable "cache_type" {
   description = <<-EOT
-    Cache storage type (azurerm for Azure Blob Storage).
-    Only used when enable_distributed_cache = true.
+    Cache storage type for GitLab Runner distributed caching.
+    
+    **Supported Values:**
+    - azurerm: Azure Blob Storage (RECOMMENDED for Azure deployments)
+    
+    **Default:** "azurerm"
   EOT
   type        = string
   default     = "azurerm"
@@ -483,60 +501,118 @@ variable "cache_type" {
   }
 }
 
-variable "cache_shared" {
-  description = <<-EOT
-    Share cache between all runners (removes runner token from cache path).
-    
-    - true: All runners share the same cache (RECOMMENDED for teams)
-    - false: Each runner has isolated cache (useful for security-sensitive workloads)
-    
-    Default: true
-  EOT
-  type        = bool
-  default     = true
-}
-
 variable "cache_storage_account_name" {
   description = <<-EOT
-    Azure Storage Account name for cache (required when enable_distributed_cache = true).
-    Must be globally unique, 3-24 lowercase alphanumeric characters.
+    Name of the Azure Storage Account for distributed caching.
     
-    Example: "mycompanyrunnercache"
+    **Requirements:**
+    - Storage account must exist before deployment
+    - Must be in the same region as runners for best performance
+    - Must be globally unique, 3-24 lowercase alphanumeric characters
+    - Requires appropriate RBAC permissions
+    
+    **Example:** "myglcachestorage"
+    
+    **Required if:** enable_distributed_cache = true
   EOT
   type        = string
   default     = ""
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_name != "")
+    error_message = "cache_storage_account_name is required when enable_distributed_cache is true"
+  }
 }
 
 variable "cache_storage_container_name" {
-  description = "Azure Blob container name for cache"
+  description = <<-EOT
+    Name of the blob container for caching.
+    
+    **Best Practice:** Use descriptive name like "gitlab-runner-cache"
+    
+    **Note:** Container will be created if it doesn't exist
+    
+    **Default:** "runner-cache"
+  EOT
   type        = string
   default     = "runner-cache"
 }
 
 variable "cache_storage_account_key" {
-  description = "Azure Storage Account access key (leave empty to use Managed Identity)"
+  description = <<-EOT
+    Storage account access key for authentication.
+    
+    **Security:** Mark as sensitive, use Azure Key Vault in production
+    
+    **Alternative:** Use managed identity (future enhancement)
+    
+    **Required if:** enable_distributed_cache = true
+  EOT
   type        = string
-  sensitive   = true
   default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_distributed_cache || (var.enable_distributed_cache && var.cache_storage_account_key != "")
+    error_message = "cache_storage_account_key is required when enable_distributed_cache is true"
+  }
+}
+
+variable "cache_shared" {
+  description = <<-EOT
+    Share cache between all runners vs. per-runner caching.
+    
+    **Shared Cache (true - RECOMMENDED):**
+    - ✓ Better cache hit rate across all runners
+    - ✓ Faster builds for common dependencies
+    - ✓ Lower storage costs
+    - ⚠️ Requires careful cache key management
+    
+    **Per-Runner Cache (false):**
+    - ✓ Isolated cache per runner
+    - ✓ Better for different workloads
+    - ⚠️ Higher storage costs
+    - ⚠️ Lower cache hit rate
+    
+    **Default:** true (shared cache)
+  EOT
+  type        = bool
+  default     = true
 }
 
 # =============================================================================
-# Centralized Logging Configuration (Optional)
+# Production Features - Centralized Logging (Optional)
 # =============================================================================
 
 variable "enable_centralized_logging" {
   description = <<-EOT
-    Enable centralized logging to Azure Log Analytics (RECOMMENDED for production).
+    Enable centralized logging using Azure Log Analytics for runner logs and job output.
     
-    Benefits:
-    - Centralized log aggregation and search
-    - Long-term log retention and compliance
-    - Advanced log analytics and alerting
-    - Essential for troubleshooting ephemeral runners
+    ✨ NEW PRODUCTION FEATURE
     
-    Cost Impact: ~$2-5/GB ingested + retention costs
+    **Benefits:**
+    - ✓ Essential for troubleshooting ephemeral runners
+    - ✓ Long-term log retention (30-730 days)
+    - ✓ Advanced search with KQL (Kusto Query Language)
+    - ✓ Integration with Azure Monitor
+    - ✓ Alerting on errors and anomalies
     
-    Default: false (for backward compatibility)
+    **Cost Impact:**
+    - Data ingestion: ~$2.76/GB
+    - Data retention (first 31 days): Free
+    - Extended retention: ~$0.12/GB/month
+    - Typical usage: 2-10 GB/month = $5.52-$27.60/month
+    - Total estimated cost: $10-40/month for typical workloads
+    
+    **When to Enable:**
+    - ✓ Production deployments requiring audit trail
+    - ✓ Compliance requirements (SOC2, ISO27001)
+    - ✓ Teams needing advanced troubleshooting
+    - ✓ Large teams with many concurrent jobs
+    
+    **Default:** false (backward compatible)
+    **Requires:** Log Analytics workspace, RBAC permissions
+    **See:** PRODUCTION_FEATURES.md for setup guide
   EOT
   type        = bool
   default     = false
@@ -544,58 +620,109 @@ variable "enable_centralized_logging" {
 
 variable "log_analytics_workspace_id" {
   description = <<-EOT
-    Azure Log Analytics Workspace ID (required when enable_centralized_logging = true).
+    Azure Log Analytics Workspace ID for centralized logging.
     
-    Format: /subscriptions/{subscription-id}/resourceGroups/{rg}/providers/Microsoft.OperationalInsights/workspaces/{workspace}
+    **Format:** Full resource ID like:
+    /subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.OperationalInsights/workspaces/{workspace-name}
     
-    Create workspace: az monitor log-analytics workspace create
+    **Required if:** enable_centralized_logging = true
   EOT
   type        = string
   default     = ""
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_id != "")
+    error_message = "log_analytics_workspace_id is required when enable_centralized_logging is true"
+  }
 }
 
 variable "log_analytics_workspace_key" {
-  description = "Azure Log Analytics Workspace shared key (required when enable_centralized_logging = true)"
+  description = <<-EOT
+    Azure Log Analytics Workspace primary or secondary key.
+    
+    **Security:** Marked as sensitive, use Azure Key Vault in production
+    
+    **Required if:** enable_centralized_logging = true
+  EOT
   type        = string
-  sensitive   = true
   default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = !var.enable_centralized_logging || (var.enable_centralized_logging && var.log_analytics_workspace_key != "")
+    error_message = "log_analytics_workspace_key is required when enable_centralized_logging is true"
+  }
 }
 
 variable "log_retention_days" {
-  description = "Log retention period in days (30, 60, 90, 120, 180, 365)"
+  description = <<-EOT
+    Number of days to retain logs in Log Analytics workspace.
+    
+    **Common Values:**
+    - 30: One month (FREE with workspace, RECOMMENDED)
+    - 90: Three months (compliance, ~$0.12/GB/month)
+    - 180: Six months (extended compliance)
+    - 365: One year (strict compliance)
+    - 730: Two years (regulatory requirements)
+    
+    **Cost Impact:**
+    - 0-31 days: Included with workspace (free)
+    - 31+ days: ~$0.12/GB/month for extended retention
+    
+    **Default:** 30 days (free tier)
+  EOT
   type        = number
   default     = 30
 
   validation {
-    condition     = contains([30, 60, 90, 120, 180, 365], var.log_retention_days)
-    error_message = "log_retention_days must be one of: 30, 60, 90, 120, 180, 365"
+    condition     = var.log_retention_days >= 30 && var.log_retention_days <= 730
+    error_message = "log_retention_days must be between 30 and 730 days"
   }
 }
 
 # =============================================================================
-# Runner Monitoring Configuration (Optional)
+# Production Features - Runner Monitoring (Optional)
 # =============================================================================
 
 variable "enable_runner_monitoring" {
   description = <<-EOT
-    Enable Prometheus metrics exposure for runner monitoring (RECOMMENDED for production).
+    Enable Prometheus metrics endpoint for runner monitoring and observability.
     
-    Benefits:
-    - Real-time runner health and performance metrics
-    - Track job duration, queue depth, and throughput
-    - Integrate with Grafana for visualization
-    - Proactive alerting on runner issues
+    ✨ NEW PRODUCTION FEATURE
     
-    Cost Impact: Minimal (uses Azure Monitor metrics)
+    **Benefits:**
+    - ✓ Track job success rate, duration, queue depth
+    - ✓ Monitor runner health and performance
+    - ✓ Integration with Grafana, Azure Monitor, Datadog
+    - ✓ Proactive alerting on issues
+    - ✓ Capacity planning insights
     
-    Default: false (for backward compatibility)
+    **Cost Impact:**
+    - Azure Monitor metrics: ~$0.25/metric/month
+    - Typical usage: 10-30 custom metrics = $2.50-$7.50/month
+    - Total estimated cost: Minimal (included in infrastructure)
+    
+    **When to Enable:**
+    - ✓ Production deployments
+    - ✓ Teams requiring SLA tracking
+    - ✓ Organizations with existing monitoring stack
+    
+    **Default:** false (backward compatible)
+    **Requires:** Network security rule for metrics port
+    **See:** PRODUCTION_FEATURES.md for Grafana integration
   EOT
   type        = bool
   default     = false
 }
 
 variable "metrics_port" {
-  description = "Port for exposing Prometheus metrics endpoint"
+  description = <<-EOT
+    Port for Prometheus metrics endpoint.
+    
+    **Default:** 9252 (GitLab Runner metrics port)
+    
+    **Security:** Ensure this port is only accessible from your monitoring infrastructure
+  EOT
   type        = number
   default     = 9252
 

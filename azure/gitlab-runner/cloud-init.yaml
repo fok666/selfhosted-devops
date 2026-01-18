@@ -128,55 +128,51 @@ write_files:
           docker rm -f "$CONTAINER_NAME" > /dev/null 2>&1 || true
         fi
         
-        # Build docker run command
-        DOCKER_RUN_CMD="docker run \
-          --privileged \
-          --tty \
-          --detach \
-          --cpus=\"$${MAX_CPU}\" \
-          -e GITLAB_URL=\"$GITLAB_URL\" \
-          -e GITLAB_TOKEN=\"$GITLAB_TOKEN\" \
-          -e RUNNER_NAME=\"$RUNNER_NAME\" \
-          -e RUNNER_TAGS=\"$RUNNER_TAGS\" \
-          -e RUNNER_EXECUTOR=\"docker\" \
-          -e RUNNER_DOCKER_IMAGE=\"alpine:latest\" \
-          -e RUNNER_RUN_UNTAGGED=\"false\" \
-          -e RUNNER_LOCKED=\"false\" \
-          -e RUNNER_ACCESS_LEVEL=\"not_protected\""
+        # Build docker run command safely using an array
+        DOCKER_ARGS=(
+          --privileged --tty --detach --cpus="$${MAX_CPU}"
+          -e GITLAB_URL="$GITLAB_URL"
+          -e GITLAB_TOKEN="$GITLAB_TOKEN"
+          -e RUNNER_NAME="$RUNNER_NAME"
+          -e RUNNER_TAGS="$RUNNER_TAGS"
+          -e RUNNER_EXECUTOR="docker"
+          -e RUNNER_DOCKER_IMAGE="alpine:latest"
+          -e RUNNER_RUN_UNTAGGED="false"
+          -e RUNNER_LOCKED="false"
+          -e RUNNER_ACCESS_LEVEL="not_protected"
+        )
         
         # Add cache configuration if enabled
         if [ "$ENABLE_CACHE" = "true" ]; then
           echo "  Configuring distributed cache (Azure Blob Storage)..."
-          DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
-          -e CACHE_TYPE=\"$CACHE_TYPE\" \
-          -e CACHE_SHARED=\"$CACHE_SHARED\" \
-          -e CACHE_AZURE_ACCOUNT_NAME=\"$CACHE_STORAGE_ACCOUNT\" \
-          -e CACHE_AZURE_CONTAINER_NAME=\"$CACHE_CONTAINER\""
+          DOCKER_ARGS+=(-e "CACHE_TYPE=$CACHE_TYPE")
+          DOCKER_ARGS+=(-e "CACHE_SHARED=$CACHE_SHARED")
+          DOCKER_ARGS+=(-e "CACHE_AZURE_ACCOUNT_NAME=$CACHE_STORAGE_ACCOUNT")
+          DOCKER_ARGS+=(-e "CACHE_AZURE_CONTAINER_NAME=$CACHE_CONTAINER")
           
           if [ -n "$CACHE_ACCESS_KEY" ]; then
-            DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
-          -e CACHE_AZURE_ACCESS_KEY=\"$CACHE_ACCESS_KEY\""
+            DOCKER_ARGS+=(-e "CACHE_AZURE_ACCESS_KEY=$CACHE_ACCESS_KEY")
           fi
         fi
         
         # Add monitoring configuration if enabled
         if [ "$ENABLE_MONITORING" = "true" ]; then
           echo "  Enabling Prometheus metrics on port $METRICS_PORT..."
-          DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
-          -p $METRICS_PORT:9252"
+          DOCKER_ARGS+=(-p "$METRICS_PORT:9252")
         fi
         
-        # Add volume mounts and finish command
-        DOCKER_RUN_CMD="$DOCKER_RUN_CMD \
-          -v \"$CONFIG_DIR\":/etc/gitlab-runner \
-          -v \"$DATA_DIR\":/runner \
-          -v /var/run/docker.sock:/var/run/docker.sock \
-          --restart unless-stopped \
-          --name \"$CONTAINER_NAME\" \
-          \"$DOCKER_IMAGE\""
+        # Add volume mounts and finish
+        DOCKER_ARGS+=(
+          -v "$CONFIG_DIR":/etc/gitlab-runner
+          -v "$DATA_DIR":/runner
+          -v /var/run/docker.sock:/var/run/docker.sock
+          --restart unless-stopped
+          --name "$CONTAINER_NAME"
+          "$DOCKER_IMAGE"
+        )
         
-        # Execute the docker run command
-        eval $DOCKER_RUN_CMD
+        # Execute docker run
+        docker run "$${DOCKER_ARGS[@]}"
         
         echo "  Container $CONTAINER_NAME started successfully"
       done
