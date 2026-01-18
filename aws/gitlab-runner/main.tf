@@ -27,6 +27,21 @@ locals {
     runner_count        = var.runner_count_per_instance
     docker_image        = var.docker_image
     runner_docker_image = "fok666/gitlab-runner:latest"
+    
+    # Production Features - Distributed Caching
+    enable_distributed_cache = var.enable_distributed_cache
+    cache_s3_bucket_name     = var.cache_s3_bucket_name
+    cache_s3_bucket_region   = var.cache_s3_bucket_region != "" ? var.cache_s3_bucket_region : var.aws_region
+    cache_shared             = var.cache_shared
+    
+    # Production Features - Centralized Logging
+    enable_centralized_logging = var.enable_centralized_logging
+    log_group_name             = var.log_group_name
+    log_retention_days         = var.log_retention_days
+    
+    # Production Features - Runner Monitoring
+    enable_runner_monitoring = var.enable_runner_monitoring
+    metrics_port             = var.metrics_port
   })
 }
 

@@ -38,3 +38,32 @@ tags = {
   ManagedBy   = "Terraform"
   Team        = "DevOps"
 }
+
+# =============================================================================
+# Production Features (Optional)
+# =============================================================================
+
+# Distributed Caching - Shared cache across ephemeral runners
+# Significantly improves build performance (2-5x faster)
+# Requires S3 bucket and IAM permissions
+# Cost: ~$2-10/month for typical usage
+# enable_distributed_cache  = true
+# cache_s3_bucket_name      = "my-gitlab-runner-cache"
+# cache_s3_bucket_region    = "us-east-1"  # Same as aws_region for best performance
+# cache_shared              = true         # Share cache between all runners
+
+# Centralized Logging - CloudWatch Logs integration
+# Essential for troubleshooting ephemeral runners
+# Requires IAM permissions for CloudWatch Logs
+# Cost: ~$5-20/month for typical usage
+# enable_centralized_logging = true
+# log_group_name             = "/aws/gitlab-runner/production"
+# log_retention_days         = 30  # 7, 30, 90, 365 days
+
+# Runner Monitoring - Prometheus metrics endpoint
+# Track job success rate, duration, queue depth
+# Requires security group rule for metrics port
+# Cost: Minimal (included in infrastructure)
+# enable_runner_monitoring     = true
+# metrics_port                 = 9252
+# metrics_allowed_cidr_blocks  = ["10.0.0.0/16"]  # Your VPC CIDR

@@ -84,3 +84,77 @@ tags = {
   CostCenter  = "Production-CI-CD"
   Criticality = "High"
 }
+
+# =============================================================================
+# ✨ PRODUCTION FEATURES (Recommended for Enterprise Deployments)
+# =============================================================================
+# These optional features enhance operational excellence, troubleshooting,
+# and observability for production GitLab Runner deployments.
+#
+# Total additional cost: ~$10-50/month
+# ROI: Significantly reduced incident resolution time, better performance
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Distributed Caching - S3 Shared Cache
+# -----------------------------------------------------------------------------
+# Benefits:
+# - ✓ 2-5x faster builds through shared cache
+# - ✓ Persistent cache across ephemeral instances
+# - ✓ Reduces bandwidth and package download costs
+# - ✓ Essential for autoscaling and spot instance workloads
+#
+# Cost: ~$2-10/month (S3 storage + requests)
+#
+# Setup:
+# 1. Create S3 bucket: aws s3 mb s3://my-gitlab-runner-cache --region us-east-1
+# 2. Uncomment variables below
+# 3. Ensure IAM role has s3:GetObject, s3:PutObject, s3:ListBucket permissions
+# -----------------------------------------------------------------------------
+enable_distributed_cache = true
+cache_s3_bucket_name     = "my-gitlab-runner-cache"  # Change to your bucket name
+cache_s3_bucket_region   = "us-east-1"               # Same as aws_region for best performance
+cache_shared             = true                      # Share cache between all runners
+
+# -----------------------------------------------------------------------------
+# Centralized Logging - CloudWatch Logs Integration
+# -----------------------------------------------------------------------------
+# Benefits:
+# - ✓ Essential for troubleshooting ephemeral runners
+# - ✓ Long-term log retention for audit and compliance
+# - ✓ Advanced search and filtering with CloudWatch Insights
+# - ✓ Integration with CloudWatch alarms for error detection
+# - ✓ Searchable history of all runner activities
+#
+# Cost: ~$5-20/month (ingestion + storage)
+#
+# Setup:
+# 1. Log group will be created automatically
+# 2. Uncomment variables below
+# 3. Ensure IAM role has logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents
+# -----------------------------------------------------------------------------
+enable_centralized_logging = true
+log_group_name             = "/aws/gitlab-runner/production"
+log_retention_days         = 30  # 30 days for production (7, 30, 90, 365 available)
+
+# -----------------------------------------------------------------------------
+# Runner Monitoring - Prometheus Metrics
+# -----------------------------------------------------------------------------
+# Benefits:
+# - ✓ Track job success rate, duration, queue depth in real-time
+# - ✓ Monitor runner health and performance
+# - ✓ Integration with CloudWatch, Grafana, Datadog
+# - ✓ Proactive alerting on issues (long queues, failing jobs)
+# - ✓ Capacity planning insights
+#
+# Cost: Minimal (~$3-9/month for CloudWatch custom metrics)
+#
+# Setup:
+# 1. Uncomment variables below
+# 2. Configure CloudWatch metrics collection or Prometheus scraping
+# 3. Set up Grafana dashboards (templates available)
+# 4. Ensure security group allows access from monitoring infrastructure
+# -----------------------------------------------------------------------------
+enable_runner_monitoring    = true
+metrics_port                = 9252                    # GitLab Runner standard metrics port
+metrics_allowed_cidr_blocks = ["10.0.0.0/16"]         # Your VPC CIDR for monitoring access
